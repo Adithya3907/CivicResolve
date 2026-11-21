@@ -1,231 +1,407 @@
-# CivicResolve: AI-Powered Citizen Grievance Management and Resolution
+# CivicResolve
 
-> **Report. Track. Resolve.**
-> Citizens describe a civic problem in any language, by text, voice or photo. **Google Gemini** understands it, classifies it, judges its urgency, routes it to the right department and starts a public SLA clock. Administrators work from an AI-prioritised queue, and everyone can watch progress on a transparent dashboard.
+> **AI-powered civic grievance management platform for local governments.**
 
-Built for the **PromptWars × GDGoC PSG iTech** hackathon (CivicResolve challenge).
-
----
-
-## Table of contents
-1. [The problem](#1-the-problem)
-2. [Our solution](#2-our-solution)
-3. [Feature walkthrough](#3-feature-walkthrough)
-4. [How we use Google Gemini](#4-how-we-use-google-gemini)
-5. [Architecture](#5-architecture)
-6. [Project structure](#6-project-structure)
-7. [Data model](#7-data-model)
-8. [API reference](#8-api-reference)
-9. [Usage guide](#9-usage-guide)
-10. [Run locally](#10-run-locally)
-11. [Configuration](#11-configuration)
-12. [Deployment](#12-deployment)
-13. [Security](#13-security)
-14. [Accessibility](#14-accessibility)
-15. [Testing](#15-testing)
-16. [Requirement-to-feature map](#16-requirement-to-feature-map)
-17. [Limitations and roadmap](#17-limitations-and-roadmap)
-18. [Screenshots](#18-screenshots)
+[![CI](https://github.com/your-org/civicresolve/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/civicresolve/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 1. The problem
-Potholes, overflowing bins, dead streetlights and leaking pipes hurt communities every day, yet reporting them is disconnected:
-- Citizens do not know **which department** owns the problem, and may not be comfortable writing in English.
-- Authorities receive unstructured complaints that must be **read, categorised and prioritised by hand**.
-- Nobody sees **whether or when** an issue will be fixed, so trust erodes.
+## Overview
 
-## 2. Our solution
-CivicResolve turns a messy complaint into a structured, routed, time-boxed ticket in seconds:
+CivicResolve is a production-ready, full-stack web application that lets citizens report civic issues — potholes, broken streetlights, water leaks, encroachments, and more — through a simple web form with optional photo uploads. Reports are instantly triaged by **Google Gemini**, which categorises the issue, assesses priority, detects the citizen's language, and routes the report to the correct municipal department. Officers and admins then act on reports through a live dashboard with real-time status updates.
 
-1. The citizen reports with free text (any language), optional voice, GPS and a photo.
-2. **Gemini** reads the text *and* image and returns category, priority, public-impact score, confidence, an English summary and a suggested action.
-3. The app routes the ticket to a department and starts an **SLA timer** based on priority.
-4. Nearby reports of the same problem are **merged**, so crews are not flooded and the issue gains weight.
-5. Admins see the most urgent work first, update statuses, and ask Gemini for a **dispatch briefing**.
-6. Citizens track progress and ask Gemini to **explain the status in their own language**.
+The platform is built for Indian municipalities but is fully internationalised (12 Indian languages supported out of the box). It runs on **Google Cloud Run** with **Firebase** as its auth and database backbone, making it cheap to operate at low volume and horizontally scalable at high volume. All AI calls go through Gemini with deterministic rule-based fallbacks, ensuring zero downtime even when the AI service is unavailable.
 
-## 3. Feature walkthrough
-| Area | What it does |
-|---|---|
-| Report form | Title, description, location, category (or "Let AI decide"), optional photo, optional name. GPS button, voice dictation (Web Speech API), photos compressed client-side. |
-| AI triage preview | "Preview AI triage" shows the result before submitting. |
-| Ticket confirmation | Unique ID such as `CR-4D5E6F`, AI result, SLA clock, link to tracking. |
-| Duplicate guard | Same category within 150 m of an open issue is merged and its "me too" count rises. |
-| Tracking | Search by ID or keyword, filter by status and category, three-step status tracker, timeline, Google Maps embed, "Me too" button. |
-| Explain status | Gemini writes a short plain-language update in English, Tamil or Hindi. |
-| Impact dashboard | Resolution rate, average time to resolve, SLA breaches, breakdown by category, priority and status. |
-| Admin dashboard | Password sign-in, issues sorted by priority, SLA state, status update with note, Gemini dispatch briefing. |
-| Offline-safe | If Gemini is unavailable, a keyword-based triage keeps the app working. |
+---
 
-## 4. How we use Google Gemini
-Gemini is the core of the product, used in four distinct places through the Gemini API (`generativelanguage.googleapis.com`, default model `gemini-2.5-flash`, configurable with `GEMINI_MODEL`).
+## Architecture
 
-| # | Touchpoint | Gemini capability | Where |
-|---|---|---|---|
-| 1 | **Complaint triage** | Multimodal input (text plus photo) with **structured JSON output** enforced by a `responseSchema` with enums for category and priority | `lib/ai.js` → `analyze` |
-| 2 | **Multilingual understanding** | Complaints in Tamil, Hindi, English or mixed are understood; summary and action are always produced in English for staff | same call, system instruction |
-| 3 | **Citizen status explainer** | Generates a warm, jargon-free update in the citizen's chosen language from the ticket timeline | `explain` → `GET /api/issues/:id/explain` |
-| 4 | **Admin dispatch briefing** | Reads all open tickets and produces today's top actions, hotspots and SLA risks | `briefing` → `GET /api/admin/briefing` |
-
-Design decisions that make the usage robust:
-- **Schema-constrained output:** the response is validated again in `normalize()` (enum checks, clamped scores) so a bad model reply can never corrupt data.
-- **Photo evidence:** the compressed image is sent as `inline_data`, so Gemini can judge severity from what it sees, not only what was typed.
-- **Explainable AI:** every triage includes `reasoning`, `confidence` and a `source` tag (`gemini` or `rules`) shown in the UI.
-- **Prompt-injection resistance:** system instructions tell Gemini to treat the complaint and ticket JSON strictly as data. Output is length-limited, validated and HTML-escaped.
-- **Graceful degradation:** 20-second timeout, and on any error the app falls back to deterministic rules (`fallbackAnalyze`), so citizens are never blocked.
-- **Low temperature (0.2)** for classification, higher (0.4) for natural-language text.
-
-## 5. Architecture
 ```
- Browser (vanilla JS SPA, no build step)
-   │  fetch /api/*                     ┌───────────────────────────┐
-   ▼                                   │  Google Gemini API        │
- Express server (server.js)  ────────▶ │  triage · explain · brief │
-   │  helmet CSP · rate limits         └───────────────────────────┘
-   │  validation · HMAC admin auth
-   ├── lib/core.js   categories, departments, SLA, validation, rule-based fallback, geo distance
-   ├── lib/ai.js     Gemini client: analyze / explain / briefing
-   └── lib/store.js  in-memory map persisted to data/issues.json (seeded demo data)
- Google Maps embed ← issue location in the tracking view
- Google Cloud Run  ← container hosting (Dockerfile)
-```
-Request flow for a new report: `POST /api/issues` → validate → Gemini triage (or fallback) → duplicate check → create ticket with SLA and timeline → return ticket → UI shows AI card.
-
-## 6. Project structure
-```
-civicresolve/
-├── server.js            Express app, routes, security middleware
-├── lib/
-│   ├── ai.js            Gemini integration (triage, explain, briefing)
-│   ├── core.js          domain rules, validation, fallback triage
-│   └── store.js         persistence and demo seed data
-├── public/
-│   ├── index.html       app shell (landmarks, skip link)
-│   ├── style.css        responsive, dark-mode, reduced-motion styles
-│   └── app.js           SPA views: home, report, track, impact, admin
-├── test/api.test.js     automated tests (node:test)
-├── Dockerfile           Cloud Run–ready, non-root
-├── .env.example         configuration template
-└── package.json
+┌─────────────────────────────────────────────────────────────┐
+│                        Browser / PWA                        │
+│         (HTML/CSS/JS served by Express, public/)            │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ HTTPS
+┌──────────────────────▼──────────────────────────────────────┐
+│               Cloud Run  –  server.js (Node 22)             │
+│                                                             │
+│  middleware/        services/           config/             │
+│  ├─ auth.js         ├─ ai.js            ├─ constants.js     │
+│  ├─ security.js     ├─ store.js         └─ firebase-admin.js│
+│  ├─ validation.js   ├─ queue.js                             │
+│  └─ errorHandler.js ├─ notifications.js                     │
+│                     └─ analytics.js                         │
+└───┬──────────────┬────────────────┬────────────────┬────────┘
+    │              │                │                │
+    ▼              ▼                ▼                ▼
+Firebase Auth  Firestore       Cloud Storage   Cloud Tasks
+(JWT tokens)   (reports,       (report images) (triage/notify
+               users, audit)                    background jobs)
+                    │
+                    ▼
+              Gemini API
+        (triage · translate ·
+         embeddings · verify)
 ```
 
-## 7. Data model
-Each issue is a JSON object:
-`id`, `title`, `description`, `location`, `lat`, `lng`, `name` (private), `image` (private data URL), `category`, `priority`, `department`, `publicImpact` (1-10), `confidence` (0-1), `summary`, `suggestedAction`, `reasoning`, `language`, `source`, `supporters`, `status` (`Reported` | `In Progress` | `Resolved`), `createdAt`, `dueAt`, `timeline[]` (`status`, `at`, `note`).
+---
 
-SLA by priority: Critical 24 h, High 72 h, Medium 7 days, Low 14 days.
+## Google Services Used
 
-Category → department: Roads & Potholes → Public Works · Garbage & Sanitation → Solid Waste Management · Streetlights & Electrical → Electricity Board · Water & Drainage → Water Supply & Drainage Board · Parks & Trees → Parks & Horticulture · Traffic & Signals → Traffic Police · Other → Municipal Helpline.
+| Service | Purpose | Why chosen |
+|---------|---------|-----------|
+| **Gemini 2.5 Flash** | Multimodal triage, translation, semantic search, resolution verification | Best price/performance for structured JSON output with vision; native `responseSchema` avoids brittle regex parsing |
+| **Firebase Authentication** | Citizen / officer / admin identity, JWT issuance | Handles OAuth, email/password, token refresh, and custom claims with zero infrastructure |
+| **Cloud Firestore** | Primary database — reports, users, audit logs, notifications, translation cache | Real-time SDK, offline support, flexible schema, generous free tier, tight Firebase Auth integration |
+| **Cloud Storage (GCS)** | Report photo storage and signed-URL delivery | Atomic consistency with Firestore, Firebase Storage Rules for auth-gated access |
+| **Cloud Tasks** | Background triage and notification queue | Durable, retryable, rate-limited job execution without a separate worker service |
+| **Cloud Run** | Container hosting | Scales to zero (zero cost at idle), no servers to manage, automatic TLS |
+| **Cloud Secret Manager** | Secure secret injection at deploy time | Avoids secrets in environment variables baked into the container image |
+| **Cloud Logging** | Structured application logs | Native Cloud Run integration, 90-day retention, alert policies |
 
-## 8. API reference
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| GET | `/healthz` | none | Health check |
-| GET | `/api/config` | none | AI availability, categories |
-| POST | `/api/analyze` | none | Preview Gemini triage without saving |
-| POST | `/api/issues` | none | Submit a report (triage, dedupe, SLA). Returns `{duplicate, issue}` |
-| GET | `/api/issues` | none | List issues, urgent first (private fields removed) |
-| GET | `/api/issues/:id` | none | One issue |
-| POST | `/api/issues/:id/support` | none | "Me too" |
-| GET | `/api/issues/:id/explain?lang=English\|Tamil\|Hindi` | none | Gemini status explainer |
-| GET | `/api/stats` | none | Dashboard numbers |
-| POST | `/api/admin/login` | none | `{password}` → signed token (8 h) |
-| PATCH | `/api/admin/issues/:id` | Bearer | `{status, note}` |
-| GET | `/api/admin/briefing` | Bearer | Gemini dispatch briefing |
-| GET | `/api/admin/issues/:id/image` | Bearer | Private photo of an issue |
+---
 
-## 9. Usage guide
-**As a citizen**
-1. Open **Report**. Enter a title and description in any language, tap 🎤 to dictate, and use 📍 to capture your location.
-2. Optionally attach a photo and tap **Preview AI triage** to see category, priority and department.
-3. Tap **Submit report** and save the ticket ID. If someone already reported the same problem nearby, your report is merged.
-4. Open **Track**, search your ID, expand the card for timeline and map, and tap **✨ Explain status** for a plain-language update in English, Tamil or Hindi.
+## Role & Permission Matrix
 
-**As an administrator**
-1. Open **Admin** and sign in with `ADMIN_PASSWORD`.
-2. Tap **Generate with Gemini** for today's priorities, hotspots and SLA risks.
-3. Change a ticket's status, add a note and **Save**. The change appears in the citizen's timeline instantly.
+| Role | Submit report | View own reports | View all reports | Update status | Manage staff |
+|------|:---:|:---:|:---:|:---:|:---:|
+| **citizen** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **officer** | ❌ | ✅ | ✅ | ✅ | ❌ |
+| **admin** | ❌ | ✅ | ✅ | ✅ | ✅ |
+| *(unauthenticated)* | ❌ | ❌ | 🔸 public fields only | ❌ | ❌ |
 
-**Try the demo:** four seeded issues around Coimbatore are loaded on first start.
+> [!NOTE]
+> Roles are stored as Firebase custom claims, set server-side only via the Admin SDK. They are verified on every request inside `middleware/auth.js`.
 
-## 10. Run locally
-Requires Node.js 20+.
+---
+
+## API Reference
+
+### Authentication
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/auth/session` | Firebase ID token (Bearer) | Exchange Firebase ID token for a session cookie |
+| `DELETE` | `/api/auth/session` | Session cookie | Sign out — clears server session |
+| `GET` | `/api/auth/me` | Session cookie | Returns `{uid, email, role, department}` |
+
+### Reports
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/reports` | citizen | Submit a new civic report (JSON body with optional `imagePaths[]`) |
+| `GET` | `/api/reports` | officer / admin | List all reports with filter + pagination (`?status=&department=&priority=&page=&limit=`) |
+| `GET` | `/api/reports/mine` | citizen | List the authenticated citizen's own reports |
+| `GET` | `/api/reports/public` | public | Paginated public list — returns `id, category, status, createdAt` only |
+| `GET` | `/api/reports/:id` | citizen (own) / officer / admin | Full report detail |
+| `PATCH` | `/api/reports/:id/status` | officer / admin | Update report status and optionally add an officer note |
+| `GET` | `/api/reports/:id/images/upload-url` | citizen (own report) | Get a signed GCS URL for direct browser upload |
+| `POST` | `/api/reports/:id/verify` | officer / admin | Trigger AI resolution verification (before/after images) |
+
+### Staff & Admin
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/staff` | admin | List all officer and admin accounts |
+| `POST` | `/api/staff` | admin | Create a new officer / admin account |
+| `PATCH` | `/api/staff/:uid/role` | admin | Change a user's role or department assignment |
+| `DELETE` | `/api/staff/:uid` | admin | Deactivate a staff account |
+
+### Analytics & AI
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/analytics/summary` | officer / admin | Aggregate stats: counts by status, department, priority |
+| `GET` | `/api/analytics/sla` | officer / admin | SLA compliance report (% resolved within target hours) |
+| `POST` | `/api/ai/search` | officer / admin | Natural-language semantic search over open tickets |
+| `GET` | `/api/ai/briefing` | officer / admin | AI-generated daily briefing for the requesting officer's department |
+
+### Infrastructure
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/healthz` | public | Health check — returns `{status:"ok", uptime, version}` |
+| `GET` | `/api/csrf-token` | session | Returns a fresh CSRF token for the current session |
+| `POST` | `/api/tasks/worker` | Cloud Tasks OIDC | Internal task handler — not for public use |
+
+---
+
+## Gemini Usage Deep-Dive
+
+### Calls Made
+
+| Function | Model call | Input | Output schema | Temp | Timeout | Retry |
+|----------|-----------|-------|---------------|------|---------|-------|
+| `triage(report)` | `generateContent` (multimodal) | description + all image parts | Full triage JSON (see below) | 0.2 | 30 s | 3× exponential |
+| `generateEmbedding(text)` | `embedContent` | report description | `number[]` (768-dim) | n/a | 10 s | 3× exponential |
+| `translateNotification(text, lang, ...)` | `generateContent` | English status message + target language | Translated string | 0.1 | 15 s | 2× |
+| `verifyResolution(before[], after[])` | `generateContent` (multimodal) | Before and after images | `{verified: bool, reason: string}` | 0.1 | 30 s | 2× |
+| `generateDailyBriefing(tickets[])` | `generateContent` | Open ticket summaries | Markdown briefing text | 0.7 | 20 s | 1× |
+| `naturalLanguageSearch(query, tickets[])` | `generateContent` | Query + ticket list | Ranked IDs with relevance scores | 0.0 | 20 s | 2× |
+
+### Triage Response Schema
+
+```jsonc
+{
+  "detectedLanguage": "hi",          // BCP-47 code
+  "englishTranslation": "...",        // null if already English
+  "category": "Road & Infrastructure",
+  "subCategory": "Pothole",
+  "priority": "High",                 // Critical | High | Medium | Low
+  "publicImpactScore": 7,             // 1–10
+  "confidence": 0.91,                 // 0–1
+  "recommendedDepartment": "PWD",
+  "suggestedAction": "...",
+  "perImageFindings": [
+    { "index": 0, "description": "...", "severity": "High" }
+  ],
+  "textImageConsistency": true,
+  "spamFlag": false,
+  "reasoning": "..."
+}
+```
+
+### Fallback Strategy
+
+If Gemini is unavailable or the response fails schema validation, `services/ai.js` falls back to deterministic rules imported from `config/constants.js`:
+
+1. Keyword matching against category definitions → category + department
+2. Static priority based on category defaults
+3. `confidence` set to `0.0`; `detectedLanguage` set to `"und"` (undetermined)
+
+The fallback result is flagged in the report so officers know manual review is needed.
+
+### Token Budget
+
+A per-day token counter is tracked in `Firestore config/budgets`. If the total token usage for the day exceeds `GEMINI_DAILY_TOKEN_LIMIT` (default: 1 000 000), triage falls back to rules and a warning is logged. Budget resets at UTC midnight via a Cloud Tasks cron-equivalent job.
+
+---
+
+## i18n Guide — Adding a New Language
+
+CivicResolve supports dynamic translation via Gemini and static string bundles. To add language `xx` (e.g. Odia `or`):
+
+1. **Add the language code** to `SUPPORTED_LANGUAGES` in `config/constants.js`:
+   ```js
+   export const SUPPORTED_LANGUAGES = [..., 'or'];
+   ```
+
+2. **Create a static strings file** at `public/locales/or.json` modelled on `public/locales/en.json`. Translate every key.
+
+3. **Register the BCP-47 name** in the `LANGUAGE_NAMES` map in `config/constants.js`:
+   ```js
+   or: 'Odia',
+   ```
+
+4. **Add a UI option** in `public/index.html` inside the `<select id="language">` element:
+   ```html
+   <option value="or">ଓଡ଼ିଆ</option>
+   ```
+
+5. **Test**: submit a report in Odia text and verify that:
+   - `detectedLanguage` equals `"or"` in the triage result
+   - The status-update notification is returned in Odia
+   - The UI renders the correct locale strings
+
+---
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GEMINI_API_KEY` | ✅ | — | Gemini API key from Google AI Studio |
+| `GEMINI_MODEL` | ❌ | `gemini-2.5-flash` | Gemini model ID |
+| `FIREBASE_PROJECT_ID` | ✅ | — | Firebase / GCP project ID |
+| `FIREBASE_CLIENT_EMAIL` | ✅ prod | — | Service account email (Admin SDK) |
+| `FIREBASE_PRIVATE_KEY` | ✅ prod | — | Service account private key (newlines as `\n`) |
+| `FIREBASE_STORAGE_BUCKET` | ✅ | — | GCS bucket name (e.g. `project.appspot.com`) |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | ✅ | — | Client SDK API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | ✅ | — | Client SDK auth domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | ✅ | — | Client SDK project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | ✅ | — | Client SDK storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | ✅ | — | Client SDK sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | — | Client SDK app ID |
+| `GOOGLE_MAPS_API_KEY` | ✅ | — | Maps JavaScript API key (location picker) |
+| `CLOUD_TASKS_QUEUE` | ❌ | — | Cloud Tasks queue name (omit to use in-process jobs) |
+| `CLOUD_TASKS_LOCATION` | ❌ | — | Cloud Tasks region (e.g. `asia-south1`) |
+| `CLOUD_TASKS_SERVICE_URL` | ❌ | — | HTTPS URL Cloud Tasks calls for jobs |
+| `SESSION_SECRET` | ✅ | — | 32+ byte random hex string for session signing |
+| `ADMIN_EMAIL` | ❌ | — | Email for the seed admin account |
+| `ADMIN_PASSWORD` | ❌ | — | Password for the seed admin account |
+| `ADMIN_NAME` | ❌ | — | Display name for the seed admin account |
+| `PORT` | ❌ | `8080` | HTTP port |
+| `NODE_ENV` | ❌ | `development` | `development` / `production` / `test` |
+| `FIREBASE_EMULATOR` | ❌ | `false` | Set `true` to point SDKs at local emulators |
+| `DATA_FILE` | ❌ | `./data/issues.json` | Fallback JSON store path (dev only) |
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 22+
+- Firebase CLI: `npm install -g firebase-tools`
+- A Firebase project (see [Firebase Setup](#firebase-setup))
+
+### Steps
+
 ```bash
+# 1. Clone the repository
+git clone https://github.com/your-org/civicresolve.git
+cd civicresolve
+
+# 2. Install dependencies
 npm install
-cp .env.example .env            # add GEMINI_API_KEY from https://aistudio.google.com/apikey
-set -a; . ./.env; set +a
-npm start                       # http://localhost:8080
-npm test
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env — fill in GEMINI_API_KEY and Firebase client SDK vars.
+# Leave FIREBASE_EMULATOR=true for local dev (no real Firebase needed).
+
+# 4. Start Firebase emulators
+firebase emulators:start
+# Emulator UI: http://localhost:4000
+# Firestore:   http://localhost:8085
+# Auth:        http://localhost:9099
+# Storage:     http://localhost:9199
+
+# 5. Start the development server (in a second terminal)
+npm run dev
+# Server: http://localhost:8080
 ```
-Without `GEMINI_API_KEY` the app runs in rules mode, so you can develop offline.
 
-## 11. Configuration
-| Variable | Default | Description |
-|---|---|---|
-| `GEMINI_API_KEY` | none | Enables all Gemini features |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Any Gemini model that supports JSON schema output |
-| `ADMIN_PASSWORD` | `admin123` | **Change in production** |
-| `SESSION_SECRET` | random per start | Signs admin tokens; set a fixed value so sessions survive restarts |
-| `PORT` | `8080` | Server port |
-| `DATA_FILE` | `data/issues.json` | Persistence file |
+> [!TIP]
+> Run `firebase emulators:export ./emulator-data` to persist emulator data across restarts, then `firebase emulators:start --import ./emulator-data` to restore it.
 
-## 12. Deployment
-### Option A: Google Cloud Run (recommended)
+---
+
+## Firebase Setup
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project**.
+2. Enable **Authentication** → Sign-in methods → enable **Email/Password** and **Google**.
+3. Enable **Firestore Database** → Start in **production mode** → choose region (e.g. `asia-south1`).
+4. Enable **Storage** → Start in **production mode**.
+5. Go to **Project Settings → Service accounts** → **Generate new private key** → save as `serviceAccountKey.json` (DO NOT commit this file).
+6. Set the values from the downloaded key in your `.env` (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`).
+7. Update `.firebaserc` → replace `YOUR_PROJECT_ID` with your actual project ID.
+8. Deploy Firestore rules and indexes:
+   ```bash
+   firebase deploy --only firestore:rules,firestore:indexes,storage
+   ```
+
+---
+
+## Google Cloud Setup
+
 ```bash
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
-gcloud run deploy civicresolve --source . --region asia-south1 --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=YOUR_KEY,ADMIN_PASSWORD=YOUR_PASSWORD,SESSION_SECRET=$(openssl rand -hex 16)
-```
-Cloud Run prints the public URL (`https://civicresolve-xxxx.a.run.app`). Verify `/healthz`, then submit a test report.
-Tip: use `--min-instances 1` during evaluation so the saved reports are not reset by cold starts. For stored secrets, use Secret Manager with `--set-secrets`.
+# 1. Enable required APIs
+gcloud services enable \
+  run.googleapis.com \
+  cloudtasks.googleapis.com \
+  secretmanager.googleapis.com \
+  storage.googleapis.com \
+  logging.googleapis.com \
+  --project YOUR_PROJECT_ID
 
-### Option B: Docker anywhere
+# 2. Create a service account for Cloud Run
+gcloud iam service-accounts create civicresolve-run \
+  --display-name "CivicResolve Cloud Run"
+
+# 3. Grant minimum roles
+SA="civicresolve-run@YOUR_PROJECT_ID.iam.gserviceaccount.com"
+PROJECT="YOUR_PROJECT_ID"
+
+for ROLE in roles/datastore.user roles/storage.objectCreator \
+            roles/storage.objectViewer roles/cloudtasks.enqueuer \
+            roles/secretmanager.secretAccessor; do
+  gcloud projects add-iam-policy-binding $PROJECT \
+    --member="serviceAccount:$SA" --role="$ROLE"
+done
+
+# 4. Store secrets in Secret Manager
+echo -n "your-gemini-key" | gcloud secrets create gemini-api-key --data-file=-
+echo -n "your-session-secret" | gcloud secrets create session-secret --data-file=-
+# Repeat for FIREBASE_PRIVATE_KEY, etc.
+
+# 5. Create a Cloud Tasks queue
+gcloud tasks queues create civicresolve-jobs \
+  --location=asia-south1
+```
+
+---
+
+## Deploy to Cloud Run
+
+**One-command deploy** (from the project root):
+
 ```bash
-docker build -t civicresolve .
-docker run -p 8080:8080 -e GEMINI_API_KEY=YOUR_KEY -e ADMIN_PASSWORD=YOUR_PASSWORD civicresolve
+gcloud run deploy civicresolve \
+  --source . \
+  --region asia-south1 \
+  --allow-unauthenticated \
+  --service-account civicresolve-run@YOUR_PROJECT_ID.iam.gserviceaccount.com \
+  --set-env-vars "GEMINI_API_KEY=$(gcloud secrets versions access latest --secret=gemini-api-key)" \
+  --set-env-vars "SESSION_SECRET=$(gcloud secrets versions access latest --secret=session-secret)" \
+  --set-env-vars "FIREBASE_PROJECT_ID=YOUR_PROJECT_ID" \
+  --set-env-vars "NODE_ENV=production" \
+  --memory 512Mi \
+  --cpu 1 \
+  --max-instances 10 \
+  --port 8080
 ```
-### Option C: Render / Railway
-Create a Web Service from the GitHub repo. Build `npm install`, start `npm start`, and add the environment variables above.
 
-## 13. Security
-- Helmet with a strict Content-Security-Policy (only Google Maps may be framed); `x-powered-by` disabled.
-- Rate limits: 120 requests/min on the API, 15/min on AI, submit and login routes.
-- Server-side validation of every field; images limited to JPEG/PNG/WebP data URLs under about 1 MB; JSON body limit 2 MB.
-- Admin tokens are HMAC-SHA256 signed with expiry; password and signature comparisons use `timingSafeEqual`.
-- Reporter names and photos are never returned by public endpoints.
-- All UI rendering escapes user content; no `innerHTML` with raw input.
-- Prompt-injection hardening for every Gemini call, plus output validation.
-- Container runs as a non-root user.
+Cloud Build will build the multi-stage Docker image, push it to Artifact Registry, and deploy it. The first deploy takes ~3 minutes.
 
-## 14. Accessibility
-Semantic landmarks and headings, skip link, every control labelled, `aria-live` regions for AI results and toasts, `role="alert"` errors, visible focus rings, keyboard-operable everywhere, colour never the only signal (text labels on priority and status), responsive layout, automatic dark mode, and `prefers-reduced-motion` support.
+### Post-Deploy Checklist
 
-## 15. Testing
-`npm test` runs the Node built-in test runner against a real in-process server:
-validation and image rejection, rule-based triage, geo-distance, submit → track → duplicate merge → admin auth → resolve, wrong password and unknown ticket handling, Gemini-free explain and admin-only briefing.
+- [ ] Visit `https://<service-url>/healthz` — should return `{"status":"ok"}`
+- [ ] Open Firebase Console → Authentication → verify test sign-in works
+- [ ] Open Firestore → verify `reports` collection is empty and rules are active
+- [ ] Submit a test report and confirm it appears in the officer dashboard
+- [ ] Check Cloud Tasks queue → verify a triage job was enqueued
+- [ ] Check Cloud Logging → verify structured logs appear without PII
+- [ ] Enable Cloud Run minimum instances = 1 if cold-start latency is unacceptable
+- [ ] Set up a Cloud Monitoring uptime check on `/healthz`
+- [ ] Configure a budget alert in GCP Billing for cost guardrails
 
-## 16. Requirement-to-feature map
-| Challenge requirement | Where |
-|---|---|
-| Citizen issue reporting with title, description, location, category, image | Report view |
-| AI classification with Gemini | `analyze` (#1) |
-| Priority detection | `priority`, `publicImpact`, SLA |
-| Department recommendation | `department` routing |
-| Issue tracking dashboard with statuses | Track view |
-| Admin dashboard | Admin view plus Gemini briefing |
-| Submission → tracking → resolution | Full flow covered by tests |
+---
 
-## 17. Limitations and roadmap
-- Storage is a JSON file; production should use **Firestore** or Cloud SQL.
-- Admin auth is a single shared password; production should use Google Identity or Firebase Auth.
-- Roadmap: map of all issues, push or WhatsApp notifications, Gemini-based photo verification of resolutions, department-level roles, analytics export.
+## Troubleshooting
 
-## 18. Screenshots
-Add images to `docs/` and reference them here (keep the repository under 10 MB):
-`docs/report.png` · `docs/triage.png` · `docs/track.png` · `docs/admin.png` · `docs/impact.png`
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `PERMISSION_DENIED` from Firestore | Service account lacks `roles/datastore.user` | Re-run the IAM grant commands in [Google Cloud Setup](#google-cloud-setup) |
+| `auth/id-token-expired` on every request | Server clock skew or session not refreshed | Ensure the Cloud Run instance has correct system time; client must refresh the ID token before it expires (1 h) |
+| Gemini returns `400 INVALID_ARGUMENT` | Prompt too long or image too large | Compress images to < 1 MB before passing to triage; truncate description to 2000 chars |
+| `ECONNREFUSED` on emulator startup | Ports 8085 / 9099 / 9199 already in use | Kill the conflicting process or change emulator ports in `firebase.json` |
+| `npm ci` fails on `FIREBASE_PRIVATE_KEY` newlines | Windows line endings in `.env` | Wrap the value in double quotes: `FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."` |
+| Cloud Tasks job never fires | `CLOUD_TASKS_SERVICE_URL` is `localhost` in production | Set `CLOUD_TASKS_SERVICE_URL` to the Cloud Run public URL |
+| `RateLimitError` on triage | Gemini free-tier RPM exceeded | Add a Gemini API key with a billing account, or reduce `GEMINI_DAILY_TOKEN_LIMIT` to spread requests |
+| Storage upload fails with `403` | Firestore rules block the upload | Verify the user has `role == 'citizen'` custom claim set; check Storage rules deployment |
+
+---
+
+## Screenshots
+
+> _Screenshots will be added after the first deployed demo._
+>
+> Planned captures:
+> - Citizen report submission form (desktop + mobile)
+> - Officer dashboard with real-time status board
+> - Admin analytics view (SLA compliance chart)
+> - AI triage result panel
+> - Multi-language notification example (Hindi / Tamil)
+
+---
 
 ## License
-MIT
+
+MIT © 2024 CivicResolve Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

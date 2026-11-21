@@ -1,0 +1,196 @@
+{
+  "nav": {
+    "home": "హోమ్",
+    "report": "ఫిర్యాదు చేయండి",
+    "track": "స్థితిని ట్రాక్ చేయండి",
+    "myReports": "నా ఫిర్యాదులు",
+    "howItWorks": "How It Works",
+    "privacy": "Privacy",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "language": "Language"
+  },
+  "home": {
+    "hero": {
+      "headline": "Civic Grievance Redressal Platform",
+      "subheadline": "Report infrastructure and municipal issues directly to city administration with verified tracking.",
+      "ctaReport": "Submit a Report",
+      "ctaTrack": "Track a Ticket"
+    },
+    "stats": {
+      "total": "Total Reports",
+      "resolved": "Resolved",
+      "criticalOpen": "Critical Open"
+    },
+    "howItWorks": {
+      "title": "Redressal Process"
+    },
+    "step1": {
+      "title": "1. Report Received",
+      "desc": "Submit the issue with description, photos, and location coordinates."
+    },
+    "step2": {
+      "title": "2. Department Routing",
+      "desc": "The complaint is categorized and assigned an official response timeline."
+    },
+    "step3": {
+      "title": "3. Resolution & Closure",
+      "desc": "Field teams complete repairs and verify completion with ground inspection."
+    },
+    "recentResolved": "Recently Resolved Grievances"
+  },
+  "report": {
+    "title": "Submit a Grievance",
+    "form": {
+      "title": "Grievance Title",
+      "titlePlaceholder": "Brief title (e.g., Deep pothole on Avinashi Road)",
+      "description": "Detailed Description",
+      "descPlaceholder": "Describe the issue clearly. You may write or dictate in any Indian language.",
+      "location": "Location / Landmark",
+      "locationPlaceholder": "Street name, landmark, or ward number",
+      "useMyLocation": "Use Current Location",
+      "category": "Category",
+      "categoryDefault": "Not sure (let department assign)",
+      "contactConsent": "I agree to receive official status updates regarding this report",
+      "submit": "Submit Grievance",
+      "voiceInput": "Voice Input",
+      "addPhoto": "Add Photo",
+      "maxPhotos": "Up to {{count}} photos",
+      "dragDrop": "Drag and drop up to 5 photos, or click to browse"
+    },
+    "success": {
+      "title": "Grievance Registered",
+      "duplicate": "This issue was already reported nearby. Your report has been added to it.",
+      "ticketId": "Ticket Reference ID",
+      "department": "Assigned Department",
+      "expectedHours": "Expected Response Window",
+      "track": "Track Status"
+    }
+  },
+  "track": {
+    "title": "Track Grievance Status",
+    "searchPlaceholder": "Enter reference ID (e.g., CR-1A2B3C)…",
+    "searchLabel": "Search Reference",
+    "noResults": "No grievance found matching this reference.",
+    "ticketId": "Reference ID",
+    "status": "Current Status",
+    "department": "Department",
+    "timeline": "Official Timeline",
+    "publicNotes": "Public Notes",
+    "myReports": "View My Reports"
+  },
+  "myReports": {
+    "title": "My Submissions",
+    "noReports": "You have not submitted any grievances yet.",
+    "addInfo": "Add Details",
+    "escalate": "Request Escalation",
+    "affected": "citizens affected",
+    "notifications": "Official Updates"
+  },
+  "howItWorks": {
+    "title": "Citizen Guide: How Grievances Are Resolved",
+    "step1": {
+      "title": "1. Received",
+      "desc": "Your submission is registered with a unique reference number and timestamped."
+    },
+    "step2": {
+      "title": "2. Reviewed and Routed",
+      "desc": "The complaint is reviewed and routed to the responsible municipal department within the city jurisdiction."
+    },
+    "step3": {
+      "title": "3. Assigned to Field Team",
+      "desc": "An inspection officer and maintenance crew are assigned based on priority criteria."
+    },
+    "step4": {
+      "title": "4. Work in Progress",
+      "desc": "The field unit carries out on-site inspection, repair, or sanitation operations."
+    },
+    "step5": {
+      "title": "5. Fixed and Checked",
+      "desc": "Completion is verified through photographic proof and field supervisor approval."
+    },
+    "expectedTimes": "Service Level Agreement (SLA) Targets",
+    "statusDefs": "Definition of Statuses",
+    "privacyInfo": "Your personal identity and phone number are kept strictly confidential.",
+    "tips": "Tips for Faster Resolution: provide an exact landmark, capture clear daylight photos, and report one issue per submission."
+  },
+  "privacy": {
+    "title": "Privacy and Data Protection",
+    "dataCollected": "Information We Collect",
+    "howUsed": "How Your Information Is Used",
+    "automatedTools": "Automated Sorting: We utilize secure automated administrative tools to assist in categorizing and sorting civic reports to the correct municipal departments efficiently.",
+    "deleteContact": "To request deletion of your account or report records, please contact the municipal grievance nodal officer."
+  },
+  "status": {
+    "Received": "స్వీకరించబడింది",
+    "UnderReview": "సమీక్షలో ఉంది",
+    "Assigned": "కేటాయించబడింది",
+    "InProgress": "పురోగతిలో ఉంది",
+    "Resolved": "పరిష్కరించబడింది"
+  },
+  "priority": {
+    "Critical": "Critical",
+    "High": "High",
+    "Medium": "Medium",
+    "Low": "Low"
+  },
+  "category": {
+    "Roads & Potholes": "Roads & Potholes",
+    "Garbage & Sanitation": "Garbage & Sanitation",
+    "Streetlights & Electrical": "Streetlights & Electrical",
+    "Water & Drainage": "Water & Drainage",
+    "Parks & Trees": "Parks & Trees",
+    "Traffic & Signals": "Traffic & Signals",
+    "Sewage & Wastewater": "Sewage & Wastewater",
+    "Public Property & Encroachment": "Public Property & Encroachment",
+    "Noise & Air Pollution": "Noise & Air Pollution",
+    "Animal & Pest Control": "Animal & Pest Control",
+    "Health & Hospitals": "Health & Hospitals",
+    "Other": "Other"
+  },
+  "error": {
+    "network": "Network communication failure. Please check your internet connection.",
+    "unauthorized": "Authentication required. Please sign in to continue.",
+    "notFound": "The requested grievance record was not found.",
+    "serverError": "The server encountered an error processing your request.",
+    "locationDenied": "Location permission denied. Please enter the landmark manually.",
+    "voiceUnsupported": "Voice recognition is not supported in this browser."
+  },
+  "validation": {
+    "titleRequired": "Please enter a title for the issue.",
+    "titleTooShort": "Title must be at least 3 characters.",
+    "titleTooLong": "Title must be 120 characters or fewer.",
+    "descRequired": "Please describe the issue in at least 10 characters.",
+    "locationRequired": "Please provide a location or landmark.",
+    "maxPhotos": "You can attach a maximum of {{count}} photos."
+  },
+  "form": {
+    "required": "Required",
+    "optional": "Optional",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next"
+  },
+  "button": {
+    "submit": "Submit",
+    "loading": "Processing…",
+    "retry": "Try Again",
+    "viewAll": "View All",
+    "learnMore": "Learn More"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Error",
+    "noData": "No records found.",
+    "by": "by",
+    "at": "at",
+    "ago": "ago",
+    "justNow": "just now",
+    "hours": "hours",
+    "days": "days"
+  },
+  "_language": "తెలుగు",
+  "_code": "te"
+}

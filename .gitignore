@@ -1,3 +1,7 @@
 node_modules/
-data/
 .env
+data/
+*.log
+coverage/
+.firebase/
+serviceAccountKey.json

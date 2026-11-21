@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Municipal Staff Portal — CivicResolve</title>
+  <meta name="theme-color" content="#1D4ED8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .auth-wrapper {
+      max-width: 420px;
+      margin: var(--space-12) auto;
+      padding: 0 var(--space-4);
+    }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8) var(--space-6);
+      box-shadow: var(--shadow-md);
+    }
+  </style>
+</head>
+<body style="background-color:var(--bg-subtle);">
+  <main class="auth-wrapper" id="main" tabindex="-1">
+    <div style="text-align:center;margin-bottom:var(--space-6);">
+      <div class="brand-emblem" style="margin:0 auto var(--space-2);width:40px;height:40px;font-size:1.1rem;">CR</div>
+      <h2>Municipal Staff Console</h2>
+      <p style="font-size:0.9rem;color:var(--text-muted);">Authorised departmental officers and administrators only.</p>
+    </div>
+
+    <div class="auth-card">
+      <form id="staff-login-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="staff-email">Official Email Address</label>
+          <input type="email" id="staff-email" class="form-input" placeholder="officer@municipality.gov.in" required autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="staff-password">Password</label>
+          <input type="password" id="staff-password" class="form-input" required autocomplete="current-password">
+        </div>
+
+        <div id="auth-error" class="form-error" style="margin-bottom:var(--space-4);" role="alert"></div>
+
+        <button type="submit" class="btn btn-primary" id="btn-staff-submit" style="width:100%;">Sign In to Console</button>
+      </form>
+    </div>
+
+    <div style="text-align:center;margin-top:var(--space-6);">
+      <p style="font-size:0.85rem;color:var(--text-muted);">
+        Notice: All administrative actions are recorded in the official audit log.
+      </p>
+    </div>
+  </main>
+
+  <script src="auth-client.js"></script>
+  <script>
+    const form = document.getElementById('staff-login-form');
+    const errBox = document.getElementById('auth-error');
+    const btnSubmit = document.getElementById('btn-staff-submit');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBox.textContent = '';
+      const email = document.getElementById('staff-email').value.trim();
+      const password = document.getElementById('staff-password').value;
+
+      if (!email || !password) {
+        errBox.textContent = 'Please enter both email and password.';
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Authenticating…';
+
+      try {
+        await window.AuthClient.signInWithEmail(email, password);
+        window.location.href = 'staff.html#overview';
+      } catch (err) {
+        errBox.textContent = err.message || 'Invalid email or password.';
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = 'Sign In to Console';
+      }
+    });
+  </script>
+</body>
+</html>
