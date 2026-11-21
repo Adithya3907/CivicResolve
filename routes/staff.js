@@ -19,7 +19,16 @@ const { wrap, httpError } = require('../middleware/errorHandler');
 const router = express.Router();
 
 // All staff endpoints require authentication and staff role (officer or admin)
-router.use(verifyToken, requireStaff);
+router.use(verifyToken, requireStaff, (req, res, next) => {
+  const blockedDemoPaths = ['/activity', '/officers', '/briefing', '/export'];
+
+  if (req.user.demo === true &&
+      (req.method !== 'GET' || blockedDemoPaths.includes(req.path))) {
+    return next(httpError(403, 'This feature is unavailable to demo staff.', 'DEMO_RESTRICTED'));
+  }
+
+  next();
+});
 
 // ── GET /api/staff/me ─────────────────────────────────────────────────────────
 router.get('/me', wrap(async (req, res) => {
@@ -83,7 +92,9 @@ router.get('/reports', validateQuery(listReportsQuerySchema), wrap(async (req, r
   if (q.overdue) filters.overdue = q.overdue;
 
   // Officers scoped to their department unless admin or explicitly specified
-  if (req.user.role === 'officer' && req.user.department && !q.department) {
+  if (req.user.demo === true) {
+    filters.department = req.user.department;
+  } else if (req.user.role === 'officer' && req.user.department && !q.department) {
     filters.department = req.user.department;
   } else if (q.department) {
     filters.department = q.department;
@@ -117,6 +128,7 @@ router.get('/reports/:id', wrap(async (req, res) => {
   const id = req.params.id.toUpperCase();
   const report = await store.getReport(id);
   if (!report) throw httpError(404, 'Report not found.', 'NOT_FOUND');
+  if (req.user.demo === true && report.department !== req.user.department) throw httpError(404, 'Report not found.', 'NOT_FOUND');
 
   // Generate signed URLs for report images
   let images = [];
@@ -382,6 +394,10 @@ router.post('/reports/:id/verify', strictLimiter, wrap(async (req, res) => {
 // ── GET /api/staff/reports/:id/audit ──────────────────────────────────────────
 router.get('/reports/:id/audit', wrap(async (req, res) => {
   const id = req.params.id.toUpperCase();
+  const report = await store.getReport(id);
+  if (!report || (req.user.demo === true && report.department !== req.user.department)) {
+    throw httpError(404, 'Report not found.', 'NOT_FOUND');
+  }
   const logs = await store.getAuditLogs(id);
   res.json({ audit: logs });
 }));

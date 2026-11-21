@@ -4,7 +4,7 @@
  * Production-ready Express application factory for CivicResolve.
  */
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
   try { require('dotenv').config(); } catch { /* ignore */ }
 }
 
@@ -13,7 +13,7 @@ const session = require('express-session');
 const path = require('path');
 const crypto = require('crypto');
 
-const { init: initFirebase } = require('./config/firebase-admin');
+const { init: initFirebase, getDiagnostics } = require('./config/firebase-admin');
 const { helmetMiddleware, compressionMiddleware, apiLimiter } = require('./middleware/security');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -161,6 +161,17 @@ function seedInitialDataIfEmpty() {
  */
 function createApp() {
   initFirebase();
+
+  const diag = getDiagnostics();
+  if (process.env.NODE_ENV !== 'test') {
+    const persistenceName = diag.isMemoryMode
+      ? 'In-Memory (Mock/Test)'
+      : diag.mode === 'emulator'
+        ? `Firestore Emulator (${process.env.FIRESTORE_EMULATOR_HOST || 'local'})`
+        : `Cloud Firestore (Live Project: ${diag.projectId})`;
+    console.log(`[CivicResolve] Database Persistence: ${persistenceName}`);
+    console.log(`[CivicResolve] Auth Mode: ${diag.mode}`);
+  }
 
   const app = express();
   app.disable('x-powered-by');

@@ -3,15 +3,17 @@
   "version": "2.0.0",
   "description": "AI-powered civic grievance reporting, triage and resolution tracking, built on Google Gemini and Cloud Run",
   "main": "server.js",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "license": "MIT",
   "scripts": {
     "start": "node server.js",
     "dev": "cross-env FIREBASE_EMULATOR=true node server.js",
-    "test": "node --test \"test/**/*.test.js\"",
-    "test:unit": "node --test \"test/unit/*.test.js\"",
-    "test:integration": "node --test \"test/integration/*.test.js\"",
-    "lint": "eslint . --ext .js",
+    "test": "cross-env NODE_ENV=test node --test \"test/**/*.test.js\"",
+    "test:unit": "cross-env NODE_ENV=test node --test \"test/unit/*.test.js\"",
+    "test:integration": "cross-env NODE_ENV=test node --test \"test/integration/*.test.js\"",
+    "lint": "eslint .",
     "seed:admin": "node scripts/seed-admin.js",
     "seed:data": "node scripts/seed-data.js",
     "i18n:generate": "node scripts/i18n-generate.js"
@@ -29,6 +31,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "eslint": "^10.15.0"
   }
 }

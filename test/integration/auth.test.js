@@ -1,4 +1,6 @@
 'use strict';
+process.env.NODE_ENV = 'test';
+delete process.env.GEMINI_API_KEY;
 /**
  * @file test/integration/auth.test.js
  * Integration test for auth endpoints:

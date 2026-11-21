@@ -107,11 +107,18 @@
         return;
       }
 
+      const firebaseConfig = (config && config.firebase) || config;
+      if (!firebaseConfig || !firebaseConfig.apiKey) {
+        console.error('[AuthClient] Missing Firebase API Key in configuration.');
+        showConfigError('Authentication configuration is incomplete. Please contact support.');
+        return;
+      }
+
       try {
         // Avoid duplicate app initialisation on HMR / multi-import scenarios
         _firebaseApp = window.firebase.apps.length
           ? window.firebase.app()
-          : window.firebase.initializeApp(config);
+          : window.firebase.initializeApp(firebaseConfig);
         _auth = window.firebase.auth(_firebaseApp);
 
         // Wire auth state observer

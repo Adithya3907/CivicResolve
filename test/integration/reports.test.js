@@ -1,4 +1,6 @@
 'use strict';
+process.env.NODE_ENV = 'test';
+delete process.env.GEMINI_API_KEY;
 /**
  * @file test/integration/reports.test.js
  * Integration test for citizen grievance reporting lifecycle:

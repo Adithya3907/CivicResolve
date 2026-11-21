@@ -889,3 +889,32 @@ a:hover {
     border-bottom: 1px solid var(--border-light);
   }
 }
+
+/* Persistent return-to-home link for both dashboards */
+.cr-return-home {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 9990;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #172a45;
+  color: #fff !important;
+  text-decoration: none !important;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+}
+.cr-return-home:hover {
+  background: #21866c;
+}
+@media (max-width: 600px) {
+  .cr-return-home {
+    bottom: 12px;
+    left: 12px;
+    padding: 10px 14px;
+  }
+}

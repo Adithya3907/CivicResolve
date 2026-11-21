@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101d35">
+  <title>Sign In | CivicResolve</title>
+  <link rel="stylesheet" href="/signin.css">
+  <script src="/auth-client.js" defer></script>
+  <script src="/signin.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <header class="brand">
+      <a href="/" class="brand-name">Civic<span>Resolve</span></a>
+      <span class="brand-label">CITIZEN & STAFF PORTAL</span>
+    </header>
+
+    <section class="intro">
+      <p class="eyebrow">WELCOME TO CIVICRESOLVE</p>
+      <h1>One platform.<br><span>Two perspectives.</span></h1>
+      <p class="subtitle">
+        Explore how citizens report civic issues and how municipal
+        staff manage and resolve them.
+      </p>
+    </section>
+
+    <section class="accounts" aria-label="Demo login accounts">
+      <article class="account-card citizen-card">
+        <div class="card-top">
+          <span class="account-icon" aria-hidden="true">C</span>
+          <span class="role-label">CITIZEN EXPERIENCE</span>
+        </div>
+        <h2>Demo Citizen</h2>
+        <p class="description">
+          Report an issue, explore public grievances and track a submission.
+        </p>
+
+        <div class="credentials">
+          <div class="credential">
+            <span>Email address</span>
+            <code>demo.citizen@civicresolve.in</code>
+          </div>
+          <div class="credential">
+            <span>Password</span>
+            <code>test123</code>
+          </div>
+        </div>
+
+        <button class="sign-in-button citizen-button"
+                type="button" data-demo-account="citizen">
+          Continue as Citizen <span aria-hidden="true">→</span>
+        </button>
+      </article>
+
+      <article class="account-card staff-card">
+        <div class="card-top">
+          <span class="account-icon" aria-hidden="true">S</span>
+          <span class="role-label">MUNICIPAL STAFF EXPERIENCE</span>
+        </div>
+        <h2>Demo Staff</h2>
+        <p class="description">
+          Explore the staff dashboard, report queue and civic analytics.
+        </p>
+
+        <div class="credentials">
+          <div class="credential">
+            <span>Email address</span>
+            <code>demo.staff@civicresolve.in</code>
+          </div>
+          <div class="credential">
+            <span>Password</span>
+            <code>test123</code>
+          </div>
+        </div>
+
+        <button class="sign-in-button staff-button"
+                type="button" data-demo-account="staff">
+          Continue as Staff <span aria-hidden="true">→</span>
+        </button>
+        <p class="read-only-note">Demo staff access is read-only.</p>
+      </article>
+    </section>
+
+    <p id="signin-error" class="error-message" role="alert" aria-live="polite"></p>
+
+    <p class="shared-notice">
+      These are shared demonstration accounts. Please use fictional
+      information only. Changes made using the citizen demo account may
+      be visible to other visitors.
+    </p>
+
+    <nav class="other-options">
+      <a href="/login.html">Use Google / Phone sign-in</a>
+      <span>·</span>
+      <a href="/staff-login.html">Other staff account</a>
+      <span>·</span>
+      <a href="/">Back to home</a>
+    </nav>
+
+    <footer>© CivicResolve · Making civic action more accountable.</footer>
+  </main>
+</body>
+</html>

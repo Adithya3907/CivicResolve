@@ -117,65 +117,7 @@
     </div>
   </main>
 
-  <script src="auth-client.js"></script>
-  <script>
-    const authErr = document.getElementById('auth-error');
-    const btnGoogle = document.getElementById('btn-google-signin');
-    const phoneForm = document.getElementById('phone-form');
-    const stepPhone = document.getElementById('step-phone');
-    const stepOtp = document.getElementById('step-otp');
-    const btnVerifyOtp = document.getElementById('btn-verify-otp');
-    const btnBackPhone = document.getElementById('btn-back-phone');
-
-    btnGoogle.addEventListener('click', async () => {
-      authErr.textContent = '';
-      btnGoogle.disabled = true;
-      try {
-        await window.AuthClient.signInWithGoogle();
-        window.location.href = 'index.html#report';
-      } catch (err) {
-        authErr.textContent = err.message || 'Google sign-in failed.';
-        btnGoogle.disabled = false;
-      }
-    });
-
-    phoneForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      authErr.textContent = '';
-      const phone = document.getElementById('phone-number').value.trim();
-      if (!phone) {
-        authErr.textContent = 'Please enter a valid mobile number.';
-        return;
-      }
-      try {
-        await window.AuthClient.signInWithPhone(phone);
-        stepPhone.style.display = 'none';
-        stepOtp.style.display = 'block';
-      } catch (err) {
-        authErr.textContent = err.message || 'Failed to send OTP.';
-      }
-    });
-
-    btnVerifyOtp.addEventListener('click', async () => {
-      authErr.textContent = '';
-      const code = document.getElementById('otp-code').value.trim();
-      if (code.length < 6) {
-        authErr.textContent = 'Please enter the complete 6-digit code.';
-        return;
-      }
-      try {
-        await window.AuthClient.confirmOTP(code);
-        window.location.href = 'index.html#my-reports';
-      } catch (err) {
-        authErr.textContent = err.message || 'Invalid verification code.';
-      }
-    });
-
-    btnBackPhone.addEventListener('click', () => {
-      stepOtp.style.display = 'none';
-      stepPhone.style.display = 'block';
-      authErr.textContent = '';
-    });
-  </script>
+  <script src="auth-client.js" defer></script>
+  <script src="login.js" defer></script>
 </body>
 </html>

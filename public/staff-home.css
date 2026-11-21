@@ -1,0 +1,20 @@
+.cr-staff-home-link {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 2147483647;
+  display: inline-flex;
+  align-items: center;
+  padding: 13px 19px;
+  border-radius: 10px;
+  background: #172a45;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 5px 18px rgba(0,0,0,.2);
+}
+.cr-staff-home-link:hover {
+  background: #21866c;
+}

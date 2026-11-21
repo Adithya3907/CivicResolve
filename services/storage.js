@@ -5,16 +5,15 @@
  * Generates signed URLs for uploads and viewing, with local fallback for dev/emulator.
  */
 
-const { getBucket, IS_EMULATOR, PROJECT_ID } = require('../config/firebase-admin');
+const { getBucket, IS_EMULATOR, isMemoryMode, PROJECT_ID, BUCKET_NAME } = require('../config/firebase-admin');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
-const BUCKET_NAME = process.env.GCS_BUCKET || `${PROJECT_ID}.appspot.com`;
 const LOCAL_UPLOAD_DIR = path.join(__dirname, '..', 'data', 'uploads');
 
-// Ensure local upload dir exists for dev fallback
-if (IS_EMULATOR) {
+// Ensure local upload dir exists for dev/test fallback
+if (IS_EMULATOR || isMemoryMode()) {
   try {
     fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
   } catch { /* ignore */ }
@@ -56,8 +55,8 @@ async function getSignedUploadUrl(reportId, mimeType, filename) {
 
   const objectPath = generateObjectPath(reportId, filename);
 
-  // If in emulator without real GCS or explicitly mock storage
-  if (IS_EMULATOR && !process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GCS_SIGNING_KEY) {
+  // If in emulator or test memory mode without real credentials
+  if ((IS_EMULATOR || isMemoryMode()) && !process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.FIREBASE_PRIVATE_KEY) {
     // Local dev endpoint
     return {
       uploadUrl: `/api/reports/${reportId}/images/upload-direct?path=${encodeURIComponent(objectPath)}`,
@@ -95,7 +94,7 @@ async function getSignedReadUrl(objectPath) {
     return objectPath;
   }
 
-  if (IS_EMULATOR && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  if ((IS_EMULATOR || isMemoryMode()) && !process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.FIREBASE_PRIVATE_KEY) {
     return `/api/reports/images/view?path=${encodeURIComponent(objectPath)}`;
   }
 

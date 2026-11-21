@@ -1,4 +1,6 @@
 'use strict';
+process.env.NODE_ENV = 'test';
+delete process.env.GEMINI_API_KEY;
 /**
  * @file test/integration/public-and-staff.test.js
  * Integration test covering public endpoints (/config, /stats, /issues filtering, /status-message)

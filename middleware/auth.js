@@ -4,7 +4,7 @@
  * Firebase Auth token verification and role-based access control middleware.
  */
 
-const { getAuth, IS_EMULATOR } = require('../config/firebase-admin');
+const { getAuth, IS_EMULATOR, isMemoryMode } = require('../config/firebase-admin');
 const { httpError } = require('./errorHandler');
 const store = require('../services/store');
 
@@ -22,12 +22,13 @@ function extractToken(req) {
 
 /**
  * Middleware: verify Firebase ID token, attach req.user = {uid, email, role, department}.
- * In emulator mode without a real token, allows a mock user via X-Mock-User header (dev only).
+ * In emulator or test mode without a real token, allows a mock user via X-Mock-User header.
+ * In real Firebase mode, ID tokens are strictly verified against Firebase Auth.
  * @type {import('express').RequestHandler}
  */
 async function verifyToken(req, res, next) {
-  // Dev-only mock user bypass (only when FIREBASE_EMULATOR=true AND no real token present)
-  if (IS_EMULATOR && req.get('x-mock-user')) {
+  // Test/Emulator mock user bypass (only when running in emulator or test memory mode)
+  if ((IS_EMULATOR || isMemoryMode()) && req.get('x-mock-user')) {
     try {
       const mock = JSON.parse(req.get('x-mock-user'));
       req.user = { uid: mock.uid || 'mock-uid', email: mock.email || 'mock@dev.local', role: mock.role || 'citizen', department: mock.department || '' };
@@ -43,7 +44,7 @@ async function verifyToken(req, res, next) {
     // Load role and department from Firestore user record (custom claims fallback)
     const role       = decoded.role       || decoded['https://civicresolve/role']       || 'citizen';
     const department = decoded.department || decoded['https://civicresolve/department'] || '';
-    req.user = { uid: decoded.uid, email: decoded.email || '', role, department };
+    req.user = { uid: decoded.uid, email: decoded.email || '', role, department, demo: decoded.demo === true };
     next();
   } catch (err) {
     if (err.code === 'auth/id-token-expired') return next(httpError(401, 'Token expired.', 'TOKEN_EXPIRED'));

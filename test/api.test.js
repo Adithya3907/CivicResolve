@@ -1,4 +1,5 @@
 'use strict';
+process.env.NODE_ENV = 'test';
 const test = require('node:test'), assert = require('node:assert');
 const os = require('os'), path = require('path');
 process.env.DATA_FILE = path.join(os.tmpdir(), `cr-${process.pid}.json`);

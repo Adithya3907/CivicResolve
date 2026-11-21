@@ -57,35 +57,7 @@
     </div>
   </main>
 
-  <script src="auth-client.js"></script>
-  <script>
-    const form = document.getElementById('staff-login-form');
-    const errBox = document.getElementById('auth-error');
-    const btnSubmit = document.getElementById('btn-staff-submit');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errBox.textContent = '';
-      const email = document.getElementById('staff-email').value.trim();
-      const password = document.getElementById('staff-password').value;
-
-      if (!email || !password) {
-        errBox.textContent = 'Please enter both email and password.';
-        return;
-      }
-
-      btnSubmit.disabled = true;
-      btnSubmit.textContent = 'Authenticating…';
-
-      try {
-        await window.AuthClient.signInWithEmail(email, password);
-        window.location.href = 'staff.html#overview';
-      } catch (err) {
-        errBox.textContent = err.message || 'Invalid email or password.';
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = 'Sign In to Console';
-      }
-    });
-  </script>
+  <script src="auth-client.js" defer></script>
+  <script src="staff-login.js" defer></script>
 </body>
 </html>

@@ -9,8 +9,9 @@
  *   Production → real Firestore
  */
 
-const { IS_EMULATOR } = require('../config/firebase-admin');
-const USE_MEMORY = IS_EMULATOR && !process.env.FIRESTORE_EMULATOR_HOST;
+const crypto = require('crypto');
+const { isMemoryMode } = require('../config/firebase-admin');
+const USE_MEMORY = isMemoryMode();
 
 // ── In-memory store (dev/test) ────────────────────────────────────────────────
 const mem = {
