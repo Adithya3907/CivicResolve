@@ -48,6 +48,60 @@ The free hosting plan is subject to Render's usage limits and terms. It is not a
 
 ---
 
+## Problem Context, Chosen Vertical & Solution Approach
+
+### 1. Chosen Vertical
+
+**Civic Technology (GovTech) – Municipal Grievance Management**
+
+CivicResolve focuses on improving how citizens report civic infrastructure and public service issues and how local government authorities manage, prioritise, and resolve those complaints.
+
+The chosen problem area includes potholes, damaged roads, broken streetlights, water leakage, sanitation issues, encroachments, and other local civic grievances.
+
+### 2. Approach and Logic
+
+CivicResolve follows an AI-assisted, human-supervised grievance management approach.
+
+Instead of treating every complaint as an isolated entry, the platform uses a structured workflow:
+
+1. **Citizen Reporting:** Citizens submit a description of the issue, optionally attaching photographs and location information.
+2. **Input Processing:** The application validates the submitted information and processes the report.
+3. **AI-Assisted Triage:** Google Gemini analyses the description and available images to identify the issue category, subcategory, priority, impact, language, and recommended department.
+4. **Fallback Handling:** If AI processing fails or returns an invalid result, deterministic rule-based logic provides a fallback classification. Such results are flagged for manual review.
+5. **Centralised Storage:** Reports and their associated information are stored using Firebase services.
+6. **Officer Review:** Municipal officers access the staff dashboard to review reports and take appropriate action.
+7. **Status Tracking:** Officers update the report status, allowing citizens to follow the progress of their grievances.
+8. **Resolution Assistance:** AI-assisted resolution verification can compare before-and-after images to help officers assess reported improvements.
+
+AI recommendations support decision-making; municipal officers remain responsible for reviewing reports and updating their status.
+
+### 3. How the Solution Works
+
+The end-to-end workflow is:
+
+**Citizen → Report Submission → AI Triage → Firebase Storage → Officer Dashboard → Action and Status Update → Citizen Tracking**
+
+The system has three primary user roles:
+
+- **Citizen:** Submits civic complaints and tracks personal reports.
+- **Officer:** Reviews assigned or accessible reports and updates their progress.
+- **Administrator:** Manages staff accounts, roles, and platform-level information.
+
+The frontend communicates with a Node.js and Express backend. Firebase Authentication handles identity, Firestore stores application records, Firebase Storage handles uploaded images, and Google Gemini provides AI-assisted processing.
+
+### 4. Assumptions Made
+
+The solution is designed around the following assumptions:
+
+1. Citizens can access the application through a web browser on a mobile device or computer.
+2. Citizens provide reasonably accurate descriptions and, where possible, photographs and location information.
+3. Municipal departments, issue categories, and priority rules are configured to reflect the requirements of the implementing authority.
+4. Municipal officers and administrators have valid accounts with appropriate permissions.
+5. AI-generated classifications and recommendations are advisory and may require human verification.
+6. Firebase, Gemini, and other required external services are available within their respective usage quotas.
+7. An internet connection is normally available for report submission, authentication, and synchronisation.
+8. Actual grievance resolution depends on the relevant municipal authority and its available resources. CivicResolve facilitates reporting and tracking; it does not independently carry out physical repairs or guarantee resolution.
+
 ## Architecture
 
 ```text
