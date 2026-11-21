@@ -2,77 +2,253 @@
 
 > **AI-powered civic grievance management platform for local governments.**
 
-[![CI](https://github.com/your-org/civicresolve/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/civicresolve/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Deployment](https://img.shields.io/badge/Deployment-Render-46E3B7)](https://civicresolve-tm96.onrender.com)
+
+**Live Demo:** https://civicresolve-tm96.onrender.com  
+**GitHub Repository:** https://github.com/Adithya3907/CivicResolve
 
 ---
 
 ## Overview
 
-CivicResolve is a production-ready, full-stack web application that lets citizens report civic issues — potholes, broken streetlights, water leaks, encroachments, and more — through a simple web form with optional photo uploads. Reports are instantly triaged by **Google Gemini**, which categorises the issue, assesses priority, detects the citizen's language, and routes the report to the correct municipal department. Officers and admins then act on reports through a live dashboard with real-time status updates.
+CivicResolve is an AI-powered civic grievance management platform that enables citizens to report local infrastructure and public service issues, including potholes, broken streetlights, water leaks, encroachments, and other civic problems.
 
-The platform is built for Indian municipalities but is fully internationalised (12 Indian languages supported out of the box). It runs on **Google Cloud Run** with **Firebase** as its auth and database backbone, making it cheap to operate at low volume and horizontally scalable at high volume. All AI calls go through Gemini with deterministic rule-based fallbacks, ensuring zero downtime even when the AI service is unavailable.
+Citizens can submit reports through a simple web interface with optional photo uploads. Google Gemini assists with report classification, priority assessment, language detection, translation, and department recommendations.
+
+Municipal officers can access a staff dashboard to review incoming reports, monitor their status, and update resolution progress. Administrators can manage staff accounts and monitor platform activity.
+
+The platform is designed for Indian municipalities, with support for 12 Indian languages and an architecture built around Firebase, Google Gemini, Node.js, and Express.
+
+CivicResolve is currently deployed as a Node.js web service on **Render**, with Firebase providing authentication, database, and file storage services.
+
+When Gemini is unavailable or an AI response cannot be processed, deterministic rule-based fallbacks allow supported workflows to continue with a result that requires manual review.
+
+---
+
+## Live Deployment
+
+| Item | Details |
+|---|---|
+| Application | CivicResolve |
+| Hosting platform | Render |
+| Service type | Node.js Web Service |
+| Deployment branch | `main` |
+| Build command | `npm install` |
+| Start command | `npm start` |
+| Instance plan | Render Free |
+| Live URL | https://civicresolve-tm96.onrender.com |
+| Database | Firebase Firestore |
+| Authentication | Firebase Authentication |
+| AI engine | Google Gemini |
+
+**Important:** The current deployment uses Render's Free instance. Free services spin down after 15 minutes without incoming traffic and typically take about a minute to start again when visited. The local filesystem is ephemeral, so persistent application data must be stored in Firebase or another external storage service.
+
+The free hosting plan is subject to Render's usage limits and terms. It is not a guarantee of permanently free hosting.
 
 ---
 
 ## Architecture
 
+```text
+                   CITIZENS / MUNICIPAL OFFICERS
+                               |
+                               | HTTPS
+                               |
+                               v
+                 +---------------------------+
+                 |       Browser / PWA       |
+                 |    HTML / CSS / JavaScript|
+                 +-------------+-------------+
+                               |
+                               v
+                 +---------------------------+
+                 |      RENDER WEB SERVICE   |
+                 |                           |
+                 |       Node.js 22          |
+                 |       Express Server      |
+                 |                           |
+                 |  middleware/              |
+                 |   - auth.js               |
+                 |   - security.js           |
+                 |   - validation.js         |
+                 |   - errorHandler.js       |
+                 |                           |
+                 |  services/                |
+                 |   - ai.js                 |
+                 |   - store.js              |
+                 |   - queue.js              |
+                 |   - notifications.js      |
+                 |   - analytics.js          |
+                 |                           |
+                 |  config/                  |
+                 |   - constants.js          |
+                 |   - firebase-admin.js     |
+                 +------+---------+----------+
+                        |         |
+              +---------+         +----------------+
+              |                                    |
+              v                                    v
+    +----------------------+            +----------------------+
+    |  FIREBASE SERVICES   |            |     GEMINI API       |
+    |                      |            |                      |
+    | Firebase Auth        |            | Report triage         |
+    | Cloud Firestore      |            | Translation           |
+    | Firebase Storage     |            | Embeddings            |
+    |                      |            | Resolution checking   |
+    +----------------------+            | Staff briefings        |
+                                        | Semantic search        |
+                                        +----------------------+
+
+              Optional integration:
+              Google Cloud Tasks for durable
+              background job processing
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Browser / PWA                        │
-│         (HTML/CSS/JS served by Express, public/)            │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTPS
-┌──────────────────────▼──────────────────────────────────────┐
-│               Cloud Run  –  server.js (Node 22)             │
-│                                                             │
-│  middleware/        services/           config/             │
-│  ├─ auth.js         ├─ ai.js            ├─ constants.js     │
-│  ├─ security.js     ├─ store.js         └─ firebase-admin.js│
-│  ├─ validation.js   ├─ queue.js                             │
-│  └─ errorHandler.js ├─ notifications.js                     │
-│                     └─ analytics.js                         │
-└───┬──────────────┬────────────────┬────────────────┬────────┘
-    │              │                │                │
-    ▼              ▼                ▼                ▼
-Firebase Auth  Firestore       Cloud Storage   Cloud Tasks
-(JWT tokens)   (reports,       (report images) (triage/notify
-               users, audit)                    background jobs)
-                    │
-                    ▼
-              Gemini API
-        (triage · translate ·
-         embeddings · verify)
-```
+
+### Architecture Components
+
+| Component | Responsibility |
+|---|---|
+| Browser / PWA | Citizen and staff interfaces |
+| Render Web Service | Hosts the Express application and API |
+| Firebase Authentication | User identity and authentication |
+| Cloud Firestore | Reports, user records, audit logs, and notifications |
+| Firebase Storage | Report images and uploaded files |
+| Google Gemini | AI-powered processing and analysis |
+| Google Cloud Tasks | Optional background job integration |
+
+Cloud Tasks is an optional integration. The current Render deployment does not have a Cloud Tasks queue configured.
 
 ---
 
-## Google Services Used
+## Features
 
-| Service | Purpose | Why chosen |
-|---------|---------|-----------|
-| **Gemini 2.5 Flash** | Multimodal triage, translation, semantic search, resolution verification | Best price/performance for structured JSON output with vision; native `responseSchema` avoids brittle regex parsing |
-| **Firebase Authentication** | Citizen / officer / admin identity, JWT issuance | Handles OAuth, email/password, token refresh, and custom claims with zero infrastructure |
-| **Cloud Firestore** | Primary database — reports, users, audit logs, notifications, translation cache | Real-time SDK, offline support, flexible schema, generous free tier, tight Firebase Auth integration |
-| **Cloud Storage (GCS)** | Report photo storage and signed-URL delivery | Atomic consistency with Firestore, Firebase Storage Rules for auth-gated access |
-| **Cloud Tasks** | Background triage and notification queue | Durable, retryable, rate-limited job execution without a separate worker service |
-| **Cloud Run** | Container hosting | Scales to zero (zero cost at idle), no servers to manage, automatic TLS |
-| **Cloud Secret Manager** | Secure secret injection at deploy time | Avoids secrets in environment variables baked into the container image |
-| **Cloud Logging** | Structured application logs | Native Cloud Run integration, 90-day retention, alert policies |
+### 1. Citizen Grievance Reporting
+
+- Submit civic issues through a web form.
+- Upload supporting photographs.
+- Provide issue descriptions and location information.
+- View personal report history.
+- Track report status and resolution progress.
+- Access the application through a browser on desktop or mobile.
+
+### 2. AI-Powered Report Triage
+
+Google Gemini assists in processing submitted reports.
+
+Capabilities include:
+
+- Automatic issue categorisation.
+- Subcategory identification.
+- Priority assessment.
+- Public impact scoring.
+- Language detection.
+- Translation into English for processing.
+- Recommended municipal department assignment.
+- Suggested corrective action.
+- Image-based issue analysis.
+- Text and image consistency checks.
+- Spam detection assistance.
+
+### 3. Multilingual Support
+
+CivicResolve supports 12 Indian languages through its language interface and translation functionality.
+
+Gemini assists with dynamic translation, while static locale files provide interface translations.
+
+### 4. Officer Dashboard
+
+Municipal officers can:
+
+- View submitted reports.
+- Filter reports by status, department, and priority.
+- Review individual report details.
+- Update grievance status.
+- Add officer notes.
+- Monitor department-level activity.
+- Access AI-generated briefings and search functionality.
+
+### 5. Administrator Management
+
+Administrators can:
+
+- View officer and administrator accounts.
+- Create staff accounts.
+- Change user roles.
+- Assign or modify department responsibilities.
+- Deactivate staff accounts.
+- Access platform analytics.
+
+### 6. Resolution Verification
+
+The AI resolution verification workflow can compare before-and-after images and return an assessment of whether the reported issue appears to have been resolved.
+
+The assessment is intended to assist human review, not replace official verification.
+
+### 7. Analytics and Reporting
+
+The platform provides:
+
+- Report counts by status.
+- Department-level statistics.
+- Priority distribution.
+- SLA compliance summaries.
+- AI-generated staff briefings.
+- Natural-language search over open tickets.
+
+### 8. Fallback Processing
+
+When Gemini is unavailable or produces an invalid response, CivicResolve uses deterministic rule-based processing for supported triage operations.
+
+Fallback results are marked with low confidence so officers can identify reports that require manual assessment.
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | HTML5, CSS3, JavaScript |
+| Backend | Node.js 22+, Express.js |
+| AI | Google Gemini API |
+| Authentication | Firebase Authentication |
+| Database | Cloud Firestore |
+| File Storage | Firebase Storage / Google Cloud Storage |
+| Hosting | Render Web Service |
+| Background Jobs | In-process queue fallback; optional Google Cloud Tasks |
+| Security | Helmet, Express sessions, Firebase authentication, validation middleware |
+| Testing | Node.js Test Runner |
+| Code Quality | ESLint |
+| Version Control | Git and GitHub |
+
+---
+
+## External Services and Integrations
+
+| Service | Purpose |
+|---|---|
+| Google Gemini 2.5 Flash | Multimodal triage, translation, semantic search, resolution verification |
+| Firebase Authentication | Citizen, officer, and administrator authentication |
+| Cloud Firestore | Primary application database |
+| Firebase Storage | Report image storage |
+| Render | Application hosting and deployment |
+| Google Maps API | Location picker and map-related functionality |
+| Google Cloud Tasks | Optional durable background job processing |
 
 ---
 
 ## Role & Permission Matrix
 
-| Role | Submit report | View own reports | View all reports | Update status | Manage staff |
-|------|:---:|:---:|:---:|:---:|:---:|
-| **citizen** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **officer** | ❌ | ✅ | ✅ | ✅ | ❌ |
-| **admin** | ❌ | ✅ | ✅ | ✅ | ✅ |
-| *(unauthenticated)* | ❌ | ❌ | 🔸 public fields only | ❌ | ❌ |
+| Role | Submit Report | View Own Reports | View All Reports | Update Status | Manage Staff |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Citizen** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Officer** | ❌ | ✅ | ✅ | ✅ | ❌ |
+| **Admin** | ❌ | ✅ | ✅ | ✅ | ✅ |
+| **Unauthenticated** | ❌ | ❌ | 🔸 Public fields only | ❌ | ❌ |
 
-> [!NOTE]
-> Roles are stored as Firebase custom claims, set server-side only via the Admin SDK. They are verified on every request inside `middleware/auth.js`.
+Roles are stored as Firebase custom claims and are assigned server-side through the Firebase Admin SDK.
+
+The application verifies user permissions through its authentication middleware before allowing protected operations.
 
 ---
 
@@ -80,81 +256,97 @@ Firebase Auth  Firestore       Cloud Storage   Cloud Tasks
 
 ### Authentication
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
+| Method | Endpoint | Authentication | Description |
+|---|---|---|---|
 | `POST` | `/api/auth/session` | Firebase ID token (Bearer) | Exchange Firebase ID token for a session cookie |
-| `DELETE` | `/api/auth/session` | Session cookie | Sign out — clears server session |
-| `GET` | `/api/auth/me` | Session cookie | Returns `{uid, email, role, department}` |
+| `DELETE` | `/api/auth/session` | Session cookie | Sign out and clear server session |
+| `GET` | `/api/auth/me` | Session cookie | Get current user details |
 
 ### Reports
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/api/reports` | citizen | Submit a new civic report (JSON body with optional `imagePaths[]`) |
-| `GET` | `/api/reports` | officer / admin | List all reports with filter + pagination (`?status=&department=&priority=&page=&limit=`) |
-| `GET` | `/api/reports/mine` | citizen | List the authenticated citizen's own reports |
-| `GET` | `/api/reports/public` | public | Paginated public list — returns `id, category, status, createdAt` only |
-| `GET` | `/api/reports/:id` | citizen (own) / officer / admin | Full report detail |
-| `PATCH` | `/api/reports/:id/status` | officer / admin | Update report status and optionally add an officer note |
-| `GET` | `/api/reports/:id/images/upload-url` | citizen (own report) | Get a signed GCS URL for direct browser upload |
-| `POST` | `/api/reports/:id/verify` | officer / admin | Trigger AI resolution verification (before/after images) |
+| Method | Endpoint | Authentication | Description |
+|---|---|---|---|
+| `POST` | `/api/reports` | Citizen | Submit a new civic report |
+| `GET` | `/api/reports` | Officer / Admin | List reports with filtering and pagination |
+| `GET` | `/api/reports/mine` | Citizen | List the authenticated citizen's reports |
+| `GET` | `/api/reports/public` | Public | View limited public report information |
+| `GET` | `/api/reports/:id` | Citizen (own) / Officer / Admin | Get report details |
+| `PATCH` | `/api/reports/:id/status` | Officer / Admin | Update report status and add an officer note |
+| `GET` | `/api/reports/:id/images/upload-url` | Citizen (own report) | Obtain a signed image upload URL |
+| `POST` | `/api/reports/:id/verify` | Officer / Admin | Trigger AI resolution verification |
 
-### Staff & Admin
+Report listing supports filters such as:
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/staff` | admin | List all officer and admin accounts |
-| `POST` | `/api/staff` | admin | Create a new officer / admin account |
-| `PATCH` | `/api/staff/:uid/role` | admin | Change a user's role or department assignment |
-| `DELETE` | `/api/staff/:uid` | admin | Deactivate a staff account |
+```text
+?status=
+&department=
+&priority=
+&page=
+&limit=
+```
 
-### Analytics & AI
+### Staff and Administration
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/analytics/summary` | officer / admin | Aggregate stats: counts by status, department, priority |
-| `GET` | `/api/analytics/sla` | officer / admin | SLA compliance report (% resolved within target hours) |
-| `POST` | `/api/ai/search` | officer / admin | Natural-language semantic search over open tickets |
-| `GET` | `/api/ai/briefing` | officer / admin | AI-generated daily briefing for the requesting officer's department |
+| Method | Endpoint | Authentication | Description |
+|---|---|---|---|
+| `GET` | `/api/staff` | Admin | List officer and administrator accounts |
+| `POST` | `/api/staff` | Admin | Create a staff account |
+| `PATCH` | `/api/staff/:uid/role` | Admin | Change a user's role or department |
+| `DELETE` | `/api/staff/:uid` | Admin | Deactivate a staff account |
+
+### Analytics and AI
+
+| Method | Endpoint | Authentication | Description |
+|---|---|---|---|
+| `GET` | `/api/analytics/summary` | Officer / Admin | Aggregate statistics |
+| `GET` | `/api/analytics/sla` | Officer / Admin | SLA compliance report |
+| `POST` | `/api/ai/search` | Officer / Admin | Natural-language semantic search |
+| `GET` | `/api/ai/briefing` | Officer / Admin | AI-generated daily briefing |
 
 ### Infrastructure
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/healthz` | public | Health check — returns `{status:"ok", uptime, version}` |
-| `GET` | `/api/csrf-token` | session | Returns a fresh CSRF token for the current session |
-| `POST` | `/api/tasks/worker` | Cloud Tasks OIDC | Internal task handler — not for public use |
+| Method | Endpoint | Authentication | Description |
+|---|---|---|---|
+| `GET` | `/healthz` | Public | Application health check |
+| `GET` | `/api/csrf-token` | Session | Get a fresh CSRF token |
+| `POST` | `/api/tasks/worker` | Cloud Tasks OIDC | Internal task handler; optional integration |
 
 ---
 
 ## Gemini Usage Deep-Dive
 
-### Calls Made
+### AI Functions
 
-| Function | Model call | Input | Output schema | Temp | Timeout | Retry |
-|----------|-----------|-------|---------------|------|---------|-------|
-| `triage(report)` | `generateContent` (multimodal) | description + all image parts | Full triage JSON (see below) | 0.2 | 30 s | 3× exponential |
-| `generateEmbedding(text)` | `embedContent` | report description | `number[]` (768-dim) | n/a | 10 s | 3× exponential |
-| `translateNotification(text, lang, ...)` | `generateContent` | English status message + target language | Translated string | 0.1 | 15 s | 2× |
-| `verifyResolution(before[], after[])` | `generateContent` (multimodal) | Before and after images | `{verified: bool, reason: string}` | 0.1 | 30 s | 2× |
-| `generateDailyBriefing(tickets[])` | `generateContent` | Open ticket summaries | Markdown briefing text | 0.7 | 20 s | 1× |
-| `naturalLanguageSearch(query, tickets[])` | `generateContent` | Query + ticket list | Ranked IDs with relevance scores | 0.0 | 20 s | 2× |
+| Function | Model Operation | Input | Expected Output |
+|---|---|---|---|
+| `triage(report)` | `generateContent` | Description and image parts | Structured report triage JSON |
+| `generateEmbedding(text)` | `embedContent` | Report description | 768-dimensional embedding |
+| `translateNotification(text, lang, ...)` | `generateContent` | Status message and target language | Translated text |
+| `verifyResolution(before[], after[])` | `generateContent` | Before-and-after images | Verification result |
+| `generateDailyBriefing(tickets[])` | `generateContent` | Open ticket summaries | Markdown briefing |
+| `naturalLanguageSearch(query, tickets[])` | `generateContent` | Search query and ticket data | Ranked report identifiers |
 
 ### Triage Response Schema
 
-```jsonc
+A representative triage response:
+
+```json
 {
-  "detectedLanguage": "hi",          // BCP-47 code
-  "englishTranslation": "...",        // null if already English
+  "detectedLanguage": "hi",
+  "englishTranslation": "...",
   "category": "Road & Infrastructure",
   "subCategory": "Pothole",
-  "priority": "High",                 // Critical | High | Medium | Low
-  "publicImpactScore": 7,             // 1–10
-  "confidence": 0.91,                 // 0–1
+  "priority": "High",
+  "publicImpactScore": 7,
+  "confidence": 0.91,
   "recommendedDepartment": "PWD",
   "suggestedAction": "...",
   "perImageFindings": [
-    { "index": 0, "description": "...", "severity": "High" }
+    {
+      "index": 0,
+      "description": "...",
+      "severity": "High"
+    }
   ],
   "textImageConsistency": true,
   "spamFlag": false,
@@ -162,78 +354,167 @@ Firebase Auth  Firestore       Cloud Storage   Cloud Tasks
 }
 ```
 
+Priority levels:
+
+- Critical
+- High
+- Medium
+- Low
+
+The response is validated before being used by the application.
+
 ### Fallback Strategy
 
-If Gemini is unavailable or the response fails schema validation, `services/ai.js` falls back to deterministic rules imported from `config/constants.js`:
+If Gemini is unavailable or its response fails validation, `services/ai.js` uses deterministic rules imported from `config/constants.js`.
 
-1. Keyword matching against category definitions → category + department
-2. Static priority based on category defaults
-3. `confidence` set to `0.0`; `detectedLanguage` set to `"und"` (undetermined)
+The documented fallback process includes:
 
-The fallback result is flagged in the report so officers know manual review is needed.
+1. Keyword matching against configured category definitions.
+2. Category and department selection.
+3. Static priority assignment using category defaults.
+4. Confidence set to `0.0`.
+5. Detected language set to `"und"` when it cannot be determined.
+
+Fallback results are flagged so that municipal officers can review them manually.
 
 ### Token Budget
 
-A per-day token counter is tracked in `Firestore config/budgets`. If the total token usage for the day exceeds `GEMINI_DAILY_TOKEN_LIMIT` (default: 1 000 000), triage falls back to rules and a warning is logged. Budget resets at UTC midnight via a Cloud Tasks cron-equivalent job.
+A daily token counter is maintained in Firestore under `config/budgets`.
+
+When the configured daily token limit is reached, supported AI triage operations fall back to deterministic rules.
+
+The documented default budget is:
+
+```text
+GEMINI_DAILY_TOKEN_LIMIT = 1000000
+```
+
+Any scheduled reset or background processing that depends on Cloud Tasks requires that optional integration to be configured.
 
 ---
 
-## i18n Guide — Adding a New Language
+## Internationalisation Guide
 
-CivicResolve supports dynamic translation via Gemini and static string bundles. To add language `xx` (e.g. Odia `or`):
+CivicResolve supports multilingual citizen interaction through static locale files and AI-assisted translation.
 
-1. **Add the language code** to `SUPPORTED_LANGUAGES` in `config/constants.js`:
-   ```js
-   export const SUPPORTED_LANGUAGES = [..., 'or'];
-   ```
+To add a language:
 
-2. **Create a static strings file** at `public/locales/or.json` modelled on `public/locales/en.json`. Translate every key.
+1. Add its language code to the supported language configuration in `config/constants.js`.
+2. Create a locale file under `public/locales/`, using `public/locales/en.json` as the reference.
+3. Register the language name in the language-name configuration.
+4. Add the corresponding option to the language selector in `public/index.html`.
 
-3. **Register the BCP-47 name** in the `LANGUAGE_NAMES` map in `config/constants.js`:
-   ```js
-   or: 'Odia',
-   ```
+For example:
 
-4. **Add a UI option** in `public/index.html` inside the `<select id="language">` element:
-   ```html
-   <option value="or">ଓଡ଼ିଆ</option>
-   ```
+```html
+<option value="or">ଓଡ଼ିଆ</option>
+```
 
-5. **Test**: submit a report in Odia text and verify that:
-   - `detectedLanguage` equals `"or"` in the triage result
-   - The status-update notification is returned in Odia
-   - The UI renders the correct locale strings
+Test the new language by verifying that:
+
+- The language selector displays the new option.
+- The interface loads the correct locale strings.
+- The AI detects the correct language code.
+- Status-update notifications are translated correctly.
 
 ---
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GEMINI_API_KEY` | ✅ | — | Gemini API key from Google AI Studio |
-| `GEMINI_MODEL` | ❌ | `gemini-2.5-flash` | Gemini model ID |
-| `FIREBASE_PROJECT_ID` | ✅ | — | Firebase / GCP project ID |
-| `FIREBASE_CLIENT_EMAIL` | ✅ prod | — | Service account email (Admin SDK) |
-| `FIREBASE_PRIVATE_KEY` | ✅ prod | — | Service account private key (newlines as `\n`) |
-| `FIREBASE_STORAGE_BUCKET` | ✅ | — | GCS bucket name (e.g. `project.appspot.com`) |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | ✅ | — | Client SDK API key |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | ✅ | — | Client SDK auth domain |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | ✅ | — | Client SDK project ID |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | ✅ | — | Client SDK storage bucket |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | ✅ | — | Client SDK sender ID |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | ✅ | — | Client SDK app ID |
-| `GOOGLE_MAPS_API_KEY` | ✅ | — | Maps JavaScript API key (location picker) |
-| `CLOUD_TASKS_QUEUE` | ❌ | — | Cloud Tasks queue name (omit to use in-process jobs) |
-| `CLOUD_TASKS_LOCATION` | ❌ | — | Cloud Tasks region (e.g. `asia-south1`) |
-| `CLOUD_TASKS_SERVICE_URL` | ❌ | — | HTTPS URL Cloud Tasks calls for jobs |
-| `SESSION_SECRET` | ✅ | — | 32+ byte random hex string for session signing |
-| `ADMIN_EMAIL` | ❌ | — | Email for the seed admin account |
-| `ADMIN_PASSWORD` | ❌ | — | Password for the seed admin account |
-| `ADMIN_NAME` | ❌ | — | Display name for the seed admin account |
-| `PORT` | ❌ | `8080` | HTTP port |
-| `NODE_ENV` | ❌ | `development` | `development` / `production` / `test` |
-| `FIREBASE_EMULATOR` | ❌ | `false` | Set `true` to point SDKs at local emulators |
-| `DATA_FILE` | ❌ | `./data/issues.json` | Fallback JSON store path (dev only) |
+Configure environment variables through the Render dashboard for the deployed service.
+
+For local development, use a `.env` file based on `.env.example`.
+
+**Never commit `.env`, a Firebase service-account JSON file, or private credentials to GitHub.**
+
+### Gemini
+
+| Variable | Required | Description |
+|---|---|---|
+| `GEMINI_API_KEY` | Yes | Google AI Studio API key |
+| `GEMINI_MODEL` | No | Gemini model ID; defaults to `gemini-2.5-flash` |
+
+### Firebase Admin SDK
+
+| Variable | Required | Description |
+|---|---|---|
+| `FIREBASE_PROJECT_ID` | Yes | Firebase project ID |
+| `FIREBASE_CLIENT_EMAIL` | Yes for current credential-based deployment | Firebase service-account email |
+| `FIREBASE_PRIVATE_KEY` | Yes for current credential-based deployment | Firebase service-account private key |
+| `FIREBASE_STORAGE_BUCKET` | Yes | Firebase Storage bucket name |
+
+The private key must be supplied with newline characters correctly represented as `\n` when entered as a single environment-variable value.
+
+### Firebase Client SDK
+
+These values are used by the browser-facing Firebase configuration.
+
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | Firebase web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Yes | Firebase authentication domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Yes | Firebase Storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Yes | Firebase messaging sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | Firebase web application ID |
+
+These client configuration values are exposed to the browser by design. They must not be treated as a substitute for proper Firebase Authentication, Firestore rules, and Storage rules.
+
+### Google Maps
+
+| Variable | Required | Description |
+|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | For map/location picker | Google Maps JavaScript API key |
+
+### Optional Cloud Tasks Integration
+
+| Variable | Required | Description |
+|---|---|---|
+| `CLOUD_TASKS_QUEUE` | No | Cloud Tasks queue name |
+| `CLOUD_TASKS_LOCATION` | No | Cloud Tasks region |
+| `CLOUD_TASKS_SERVICE_URL` | No | HTTPS URL used for task callbacks |
+
+When Cloud Tasks is not configured, the application uses its available in-process job handling.
+
+In-process background processing is not durable across service restarts or spin-downs. It should not be treated as a guaranteed job-delivery mechanism.
+
+### Session
+
+| Variable | Required | Description |
+|---|---|---|
+| `SESSION_SECRET` | Yes | At least 32 bytes of random secret material used for session signing |
+
+Generate a secure secret using:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### Optional Admin Bootstrap Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `ADMIN_EMAIL` | No | Email for the admin seed script |
+| `ADMIN_PASSWORD` | No | Password for the admin seed script |
+| `ADMIN_NAME` | No | Display name for the admin seed script |
+
+These are only for the administrator bootstrap script. They are not needed for normal application startup.
+
+### Application
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8080` | HTTP server port; Render supplies its own port |
+| `NODE_ENV` | `development` | Application environment |
+| `FIREBASE_EMULATOR` | `false` | Enable Firebase emulator mode |
+| `DATA_FILE` | `./data/issues.json` | Development fallback JSON file path |
+
+For the current Render deployment:
+
+```text
+NODE_ENV=production
+FIREBASE_EMULATOR=false
+```
 
 ---
 
@@ -241,167 +522,232 @@ CivicResolve supports dynamic translation via Gemini and static string bundles. 
 
 ### Prerequisites
 
-- Node.js 22+
-- Firebase CLI: `npm install -g firebase-tools`
-- A Firebase project (see [Firebase Setup](#firebase-setup))
+- Node.js 22 or newer.
+- npm.
+- Git.
+- A Firebase project.
+- Firebase CLI for emulator and Firebase configuration tasks.
 
-### Steps
+### 1. Clone the Repository
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/civicresolve.git
-cd civicresolve
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment
-cp .env.example .env
-# Edit .env — fill in GEMINI_API_KEY and Firebase client SDK vars.
-# Leave FIREBASE_EMULATOR=true for local dev (no real Firebase needed).
-
-# 4. Start Firebase emulators
-firebase emulators:start
-# Emulator UI: http://localhost:4000
-# Firestore:   http://localhost:8085
-# Auth:        http://localhost:9099
-# Storage:     http://localhost:9199
-
-# 5. Start the development server (in a second terminal)
-npm run dev
-# Server: http://localhost:8080
+git clone https://github.com/Adithya3907/CivicResolve.git
+cd CivicResolve
 ```
 
-> [!TIP]
-> Run `firebase emulators:export ./emulator-data` to persist emulator data across restarts, then `firebase emulators:start --import ./emulator-data` to restore it.
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure Environment Variables
+
+Create a local environment file:
+
+```bash
+cp .env.example .env
+```
+
+On Windows PowerShell, use:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edit `.env` and supply the required credentials for the mode you intend to run.
+
+Do not commit this file.
+
+### 4. Start Firebase Emulators
+
+Install Firebase CLI if it is not already available:
+
+```bash
+npm install -g firebase-tools
+```
+
+Start the configured emulators:
+
+```bash
+firebase emulators:start
+```
+
+The default development emulator services are:
+
+| Service | Local Port |
+|---|---:|
+| Emulator UI | 4000 |
+| Firestore | 8085 |
+| Authentication | 9099 |
+| Storage | 9199 |
+
+### 5. Start the Application
+
+In another terminal:
+
+```bash
+npm run dev
+```
+
+The default local application URL is:
+
+```text
+http://localhost:8080
+```
+
+### 6. Run Tests
+
+Run the complete test suite:
+
+```bash
+npm test
+```
+
+Run unit tests:
+
+```bash
+npm run test:unit
+```
+
+Run integration tests:
+
+```bash
+npm run test:integration
+```
+
+### 7. Run ESLint
+
+```bash
+npm run lint
+```
 
 ---
 
 ## Firebase Setup
 
-1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project**.
-2. Enable **Authentication** → Sign-in methods → enable **Email/Password** and **Google**.
-3. Enable **Firestore Database** → Start in **production mode** → choose region (e.g. `asia-south1`).
-4. Enable **Storage** → Start in **production mode**.
-5. Go to **Project Settings → Service accounts** → **Generate new private key** → save as `serviceAccountKey.json` (DO NOT commit this file).
-6. Set the values from the downloaded key in your `.env` (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`).
-7. Update `.firebaserc` → replace `YOUR_PROJECT_ID` with your actual project ID.
-8. Deploy Firestore rules and indexes:
-   ```bash
-   firebase deploy --only firestore:rules,firestore:indexes,storage
-   ```
+CivicResolve uses Firebase Authentication, Cloud Firestore, and Firebase Storage.
 
----
+1. Open the [Firebase Console](https://console.firebase.google.com/).
+2. Create or select the Firebase project.
+3. Enable the required Authentication sign-in providers, including Email/Password and Google if used by the configured interface.
+4. Create a Firestore database.
+5. Enable Firebase Storage and configure its security rules.
+6. Open **Project Settings → Service Accounts**.
+7. Generate a service-account private key for the server-side Firebase Admin SDK.
+8. Store the service-account credentials securely in your environment variables.
+9. Configure the Firebase client SDK values from **Project Settings → General → Your apps**.
+10. Confirm that the project ID matches the application environment configuration.
 
-## Google Cloud Setup
-
-```bash
-# 1. Enable required APIs
-gcloud services enable \
-  run.googleapis.com \
-  cloudtasks.googleapis.com \
-  secretmanager.googleapis.com \
-  storage.googleapis.com \
-  logging.googleapis.com \
-  --project YOUR_PROJECT_ID
-
-# 2. Create a service account for Cloud Run
-gcloud iam service-accounts create civicresolve-run \
-  --display-name "CivicResolve Cloud Run"
-
-# 3. Grant minimum roles
-SA="civicresolve-run@YOUR_PROJECT_ID.iam.gserviceaccount.com"
-PROJECT="YOUR_PROJECT_ID"
-
-for ROLE in roles/datastore.user roles/storage.objectCreator \
-            roles/storage.objectViewer roles/cloudtasks.enqueuer \
-            roles/secretmanager.secretAccessor; do
-  gcloud projects add-iam-policy-binding $PROJECT \
-    --member="serviceAccount:$SA" --role="$ROLE"
-done
-
-# 4. Store secrets in Secret Manager
-echo -n "your-gemini-key" | gcloud secrets create gemini-api-key --data-file=-
-echo -n "your-session-secret" | gcloud secrets create session-secret --data-file=-
-# Repeat for FIREBASE_PRIVATE_KEY, etc.
-
-# 5. Create a Cloud Tasks queue
-gcloud tasks queues create civicresolve-jobs \
-  --location=asia-south1
-```
-
----
-
-## Deploy to Cloud Run
-
-**One-command deploy** (from the project root):
+Deploy the configured Firestore and Storage rules from the repository:
 
 ```bash
-gcloud run deploy civicresolve \
-  --source . \
-  --region asia-south1 \
-  --allow-unauthenticated \
-  --service-account civicresolve-run@YOUR_PROJECT_ID.iam.gserviceaccount.com \
-  --set-env-vars "GEMINI_API_KEY=$(gcloud secrets versions access latest --secret=gemini-api-key)" \
-  --set-env-vars "SESSION_SECRET=$(gcloud secrets versions access latest --secret=session-secret)" \
-  --set-env-vars "FIREBASE_PROJECT_ID=YOUR_PROJECT_ID" \
-  --set-env-vars "NODE_ENV=production" \
-  --memory 512Mi \
-  --cpu 1 \
-  --max-instances 10 \
-  --port 8080
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
-Cloud Build will build the multi-stage Docker image, push it to Artifact Registry, and deploy it. The first deploy takes ~3 minutes.
-
-### Post-Deploy Checklist
-
-- [ ] Visit `https://<service-url>/healthz` — should return `{"status":"ok"}`
-- [ ] Open Firebase Console → Authentication → verify test sign-in works
-- [ ] Open Firestore → verify `reports` collection is empty and rules are active
-- [ ] Submit a test report and confirm it appears in the officer dashboard
-- [ ] Check Cloud Tasks queue → verify a triage job was enqueued
-- [ ] Check Cloud Logging → verify structured logs appear without PII
-- [ ] Enable Cloud Run minimum instances = 1 if cold-start latency is unacceptable
-- [ ] Set up a Cloud Monitoring uptime check on `/healthz`
-- [ ] Configure a budget alert in GCP Billing for cost guardrails
+Do not commit the downloaded service-account JSON file.
 
 ---
 
-## Troubleshooting
+## Deployment on Render
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `PERMISSION_DENIED` from Firestore | Service account lacks `roles/datastore.user` | Re-run the IAM grant commands in [Google Cloud Setup](#google-cloud-setup) |
-| `auth/id-token-expired` on every request | Server clock skew or session not refreshed | Ensure the Cloud Run instance has correct system time; client must refresh the ID token before it expires (1 h) |
-| Gemini returns `400 INVALID_ARGUMENT` | Prompt too long or image too large | Compress images to < 1 MB before passing to triage; truncate description to 2000 chars |
-| `ECONNREFUSED` on emulator startup | Ports 8085 / 9099 / 9199 already in use | Kill the conflicting process or change emulator ports in `firebase.json` |
-| `npm ci` fails on `FIREBASE_PRIVATE_KEY` newlines | Windows line endings in `.env` | Wrap the value in double quotes: `FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."` |
-| Cloud Tasks job never fires | `CLOUD_TASKS_SERVICE_URL` is `localhost` in production | Set `CLOUD_TASKS_SERVICE_URL` to the Cloud Run public URL |
-| `RateLimitError` on triage | Gemini free-tier RPM exceeded | Add a Gemini API key with a billing account, or reduce `GEMINI_DAILY_TOKEN_LIMIT` to spread requests |
-| Storage upload fails with `403` | Firestore rules block the upload | Verify the user has `role == 'citizen'` custom claim set; check Storage rules deployment |
+CivicResolve is currently deployed on Render using its GitHub integration.
+
+### Deployment Configuration
+
+| Setting | Value |
+|---|---|
+| Platform | Render |
+| Service type | Web Service |
+| Repository | `Adithya3907/CivicResolve` |
+| Branch | `main` |
+| Runtime | Node |
+| Build command | `npm install` |
+| Start command | `npm start` |
+| Instance type | Free |
+
+### Deployment Steps
+
+1. Push the application code to the GitHub repository.
+2. Sign in to the [Render Dashboard](https://dashboard.render.com/).
+3. Select **New → Web Service**.
+4. Connect the CivicResolve GitHub repository.
+5. Select the `main` branch.
+6. Configure the build and start commands shown above.
+7. Select the Free instance type.
+8. Add the required environment variables in the Render dashboard.
+9. Deploy the service.
+10. Check the deployment logs and confirm that the service starts successfully.
+
+### Live Application
+
+**CivicResolve:**
+
+https://civicresolve-tm96.onrender.com
+
+### Post-Deployment Verification
+
+- [ ] Open the live application.
+- [ ] Confirm the homepage loads.
+- [ ] Verify citizen authentication.
+- [ ] Verify officer authentication.
+- [ ] Submit a sample civic grievance.
+- [ ] Confirm that the report is stored in Firestore.
+- [ ] Check that Gemini-assisted triage works.
+- [ ] Verify that an officer can view the report.
+- [ ] Update the report status.
+- [ ] Verify that the updated status is reflected in the application.
+- [ ] Check `/healthz` for the application health response.
+
+### Important Render Free-Plan Limitations
+
+The current deployment uses Render's Free web service.
+
+- The service spins down after 15 minutes without incoming traffic.
+- The first request after spin-down can take approximately one minute to complete startup.
+- The local filesystem is ephemeral. Data written only to local files can be lost after restart, redeployment, or spin-down.
+- Free services can restart automatically.
+- Free instance hours and other usage allowances apply.
+- Background work running only in process may be interrupted by restarts.
+
+CivicResolve therefore uses Firebase services for persistent application data rather than relying on the Render filesystem.
+
+For the latest information, see [Render Free Instance Documentation](https://render.com/docs/free).
 
 ---
 
-## Screenshots
+## Testing and Quality Checks
 
-> _Screenshots will be added after the first deployed demo._
->
-> Planned captures:
-> - Citizen report submission form (desktop + mobile)
-> - Officer dashboard with real-time status board
-> - Admin analytics view (SLA compliance chart)
-> - AI triage result panel
-> - Multi-language notification example (Hindi / Tamil)
+The project includes unit and integration tests.
+
+Run the complete test suite:
+
+```bash
+npm test
+```
+
+Run only unit tests:
+
+```bash
+npm run test:unit
+```
+
+Run only integration tests:
+
+```bash
+npm run test:integration
+```
+
+Run linting:
+
+```bash
+npm run lint
+```
+
+The test suite covers application APIs, authentication, report operations, public and staff functionality, and AI-related processing.
 
 ---
 
 ## License
 
-MIT © 2024 CivicResolve Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
